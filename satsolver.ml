@@ -1,28 +1,5 @@
 type cnf = int array array;;
 
-let read_cnf path =
-    let rec read_clause list depth =
-        match list with
-            |[] -> Array.make depth 0
-            |["0"] -> Array.make depth 0
-            |""::q -> read_clause q depth
-            |t::q -> let clause = read_clause q (depth+1) in
-                        clause.(depth) <- int_of_string t;
-                        clause
-    in
-    let rec read_line file depth =
-        let line = input_line file in
-        match line.[0] with
-            |'c' -> read_line file depth
-            |'p' -> read_line file depth
-            |'%' -> Array.make depth [||]
-            |_ -> let cnf = read_line file (depth+1) in
-                    cnf.(depth) <- read_clause (String.split_on_char ' ' line) 0;
-                    cnf
-    in
-    read_line (open_in path) 0
-;;
-
 
 let eval form asgn =
     let rec disj i j =
