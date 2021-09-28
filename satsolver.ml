@@ -33,5 +33,5 @@ let naive_solver form =
             |true -> true
             |false -> if next conf then test conf else false
     in
-    asgn.(0) <- test asgn; asgn
+    test asgn
 ;;

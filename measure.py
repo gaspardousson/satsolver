@@ -13,26 +13,15 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, length=10
         print()
 
 
-def test(path, n):
-    os.system("touch test.txt")
-    os.system("rm test.txt")
-    os.system("touch test.txt")
-    start_time = time.time()
-    for i in range(1, n+1):
-        os.system("./satsolver-opt " + path + str(i) + ".cnf >> test.txt")
-    return time.time() - start_time
-
-
-def measure(files):
-    os.system("touch measure.txt")
-    os.system("rm measure.txt")
-    os.system("touch measure.txt")
+def measure(files, quantity):
+    os.system("touch measures.txt")
+    os.system("rm measures.txt")
+    os.system("touch measures.txt")
     k = 0
     for f in files:
         print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
-        os.system("echo " + str(f[2]) + "-" + str(test(f[0], f[1]) / f[1]) + " >> measure.txt")
-        k += 1
-    print_progress(len(files), len(files), prefix='Progress:', suffix='Complete', length=50)
+        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + quantity + " >> measures.txt")
+        print_progress(len(files), len(files), prefix='Progress:', suffix='Complete', length=50)
 
 
 def coord_from_file(path, taken=0, unit=6):
@@ -51,26 +40,19 @@ def graph(coord, name, xlabel, ylabel="Temps d'exécution moyen (en $ms$)"):
     plt.ylabel(ylabel)
     plt.plot(x, y/1000, label=name)
 
-
-def reg(coord):
-    slope, intercept, r, p_value, std_err = stats.linregress(coord[0], coord[1])
-    graph(coord, "", "")
-    plt.plot(np.linspace(coord[0][0], coord[0][-1]), slope*np.linspace(coord[0][0], coord[0][-1])+intercept, label="Régression")
-    print(str(slope)+"x"+str(intercept))
-    print(r**2)
-
-
-#plt.style.use("Solarize_Light2")
-
-
-measure([
+files = [
     ["test/UF020.91/uf20-0", 100, 91]
-    ])
+]
+quantity = "bool"
 
-c = coord_from_file("measure.txt")
-graph(c, "Naive solver", "Nombre de litéraux")
+measure(files, quantity)
 
-plt.title("Comparaison des satsolvers")
-plt.legend()
-plt.show()
+if quantity == "time":
+    c = coord_from_file("measures.txt")
+    graph(c, "Naive solver", "Nombre de litéraux")
+
+    plt.style.use("Solarize_Light2")
+    plt.title("Comparaison des satsolvers")
+    plt.legend()
+    plt.show()
 
