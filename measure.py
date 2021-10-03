@@ -39,8 +39,10 @@ def bool_from_file(path):
     b = []
     file = open(path, "r")
     for m in file.read().split("\n"):
-        if m != "":
-            b.append(m == "sat")
+        if m == "sat":
+            b.append(True)
+        if m == "unsat":
+            b.append(False)
     return b
 
 
@@ -51,7 +53,7 @@ def graph(coord, name, xlabel, ylabel="Temps d'exécution moyen (en $ms$)"):
     plt.plot(x, y/1000, label=name)
 
 files = [
-    ["test/UF020.91/uf20-0", 100, 20, True]
+    ["test/UF20.91/uf20-0", 100, 20, True]
 ]
 quantity = "bool"
 plt.style.use("Solarize_Light2")
