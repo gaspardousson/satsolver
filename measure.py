@@ -53,9 +53,9 @@ def graph(coord, name, xlabel, ylabel="Temps d'exécution moyen (en $ms$)"):
     plt.plot(x, y/1000, label=name)
 
 files = [
-    ["test/UF20.91/uf20-0", 50, 20, True]
+    ["test/UF20.91/uf20-0", 100, 20, True]
 ]
-quantity = "bool"
+quantity = "time"
 plt.style.use("Solarize_Light2")
 
 measure(files, quantity)

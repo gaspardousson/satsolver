@@ -14,6 +14,8 @@ let plf_of_string s =
 ;;
 
 
+(* TODO: Improve .cnf reading *)
+
 let read_cnf path =
 
     let rec read_clause list depth =

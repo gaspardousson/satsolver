@@ -1,7 +1,7 @@
 open Translater;;
 open Satsolver;;
 
-let solver = naive_solver;;
+let solver = quine_solver;;
 
 let bool path n_pb n_va =
     let prob = Array.make n_pb [||] in
