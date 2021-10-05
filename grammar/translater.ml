@@ -1,7 +1,8 @@
 open Language;;
 open Parser;;
 
-let rec string_of_plf f = match f with
+let rec string_of_plf f =
+    match f with
         |Var i -> string_of_int i
         |Not f -> "-" ^ (string_of_plf f)
         |And (f1, f2) -> "(" ^ (string_of_plf f1) ^ " ^ " ^ (string_of_plf f2) ^ ")"
@@ -14,6 +15,7 @@ let plf_of_string s =
 
 
 let read_cnf path =
+
     let rec read_clause list depth =
         match list with
             |[] -> Array.make depth 0
@@ -23,6 +25,7 @@ let read_cnf path =
                         clause.(depth) <- int_of_string t;
                         clause
     in
+
     let rec read_line file depth =
         let line = input_line file in
         match line.[0] with
@@ -33,5 +36,6 @@ let read_cnf path =
                     cnf.(depth) <- read_clause (String.split_on_char ' ' line) 0;
                     cnf
     in
+
     read_line (open_in path) 0
 ;;

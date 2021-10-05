@@ -19,7 +19,7 @@ def measure(files, quantity):
     k = 0
     for f in files:
         print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
-        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + quantity + " >> measures.txt")
+        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + str(f[2]) + " " + quantity + " >> measures.txt")
         k += 1
     print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
 
@@ -27,11 +27,11 @@ def measure(files, quantity):
 def coord_from_file(path):
     x, y = [0], [0]
     file = open(path, "r")
-    m = file.read().split("\n")
-    for i in range(len(m)):
-        if m[i] != "":
-            x.append(files[i][2])
-            y.append(float(m[i]))
+    for m in file.read().split("\n"):
+        if m != "":
+            m1, m2 = m.split("-")
+            x.append(int(m1))
+            y.append(float(m2))
     return np.array([np.array(x), np.array(y)])
 
 
@@ -53,7 +53,7 @@ def graph(coord, name, xlabel, ylabel="Temps d'exécution moyen (en $ms$)"):
     plt.plot(x, y/1000, label=name)
 
 files = [
-    ["test/UF20.91/uf20-0", 100, 20, True]
+    ["test/UF20.91/uf20-0", 50, 20, True]
 ]
 quantity = "bool"
 plt.style.use("Solarize_Light2")
@@ -64,7 +64,7 @@ if quantity == "time":
     c = coord_from_file("measures.txt")
     graph(c, "Naive solver", "Nombre de litéraux")
 
-    plt.title("Comparaison des satsolvers")
+    plt.title("Comparaison des solvers")
     plt.legend()
     plt.show()
 
@@ -76,7 +76,7 @@ if quantity == "bool":
         for j in range(1, f[1]+1):
             if b[i] != f[3]:
                 test = False
-                print("\33[101m" + "Solver output doesn't match expected result on " + f[0] + str(j))
+                print("\33[101m" + "Solver output doesn't match expected result on " + f[0] + str(j) + "\33[0m")
             i += 1
     if test:
-        print("\33[102m" + "Test successfully passed!")
+        print("\33[102m" + "Test successfully passed!" + "\33[0m")

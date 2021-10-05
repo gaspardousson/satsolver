@@ -1,37 +1,43 @@
 type cnf = int array array;;
 
 
-let eval form asgn =
-    let rec disj i j =
-        match j with
-        |_ when j = Array.length form.(i) -> false
-        |_ -> let literal = form.(i).(j) in
-            (literal > 0 && asgn.(literal)) || (literal < 0 && not asgn.(-literal)) || disj i (j+1)
+
+(* Naive solver *)
+
+let verify form asgn =
+
+    let rec simplify form asgn dpth =
+        match asgn with
+
+            |[] -> let bool = ref true in
+                    for i = 0 to Array.length form - 1 do
+                        bool := !bool && (form.(i) = [||])
+                    done; !bool
+
+            |h::t -> for i = 0 to Array.length form - 1 do
+                        let j = ref (Array.length form.(i) - 1) in
+                        while !j >= 0 do
+                            if (h && form.(i).(!j) = dpth) || (not h && form.(i).(!j) = -dpth)
+                                then begin
+                                    form.(i) <- [||];
+                                    j := -1
+                                end;
+                            decr j
+                        done;
+                    done; simplify form t (dpth+1)
     in
-    let rec conj i =
-        match i with
-        |_ when i = Array.length form -> true
-        |_ -> (disj i 0) && (conj (i+1))
-    in
-    conj 0
+
+    simplify form asgn 0
 ;;
 
-let naive_solver form =
-    let n = (Array.length form) + 1 in
-    let asgn = Array.make n false in
-    let rec next conf =
-        let i = ref 1 in
-        while !i < n && conf.(!i) do
-            conf.(!i) <- false;
-            incr i;
-        done;
-        if !i < n then conf.(!i) <- true;
-        !i < n
-    in
-    let rec test conf =
-        match eval form conf with
-            |true -> true
-            |false -> if next conf then test conf else false
-    in
-    test asgn
+
+
+let naive_solver form n_va =
+
+    let rec aux n_va asgn =
+        match n_va with
+            |0 -> verify form asgn
+            |_ -> aux (n_va - 1) (true::asgn) || aux (n_va - 1) (false::asgn)
+
+    in aux n_va []
 ;;
