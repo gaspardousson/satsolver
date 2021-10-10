@@ -52,12 +52,12 @@ files = [
     #["test/UF75.325/uf75-0", 100, 75, True],
 ]
 measures = [
-    "naive_solver",
+    #"naive_solver",
     "quine_solver"
 ]
 plt.style.use("Solarize_Light2")
 
-task = "graph"
+task = "bool"
 
 if task == "graph":
     for solver in measures:
