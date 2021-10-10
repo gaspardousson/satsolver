@@ -46,29 +46,47 @@ def bool_from_file(path):
     return b
 
 
-def graph(coord, name, xlabel, ylabel="Temps d'exécution moyen (en $ms$)"):
-    x, y = coord[0], coord[1]
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.plot(x, y/1000, label=name)
-
 files = [
-    ["test/UF20.91/uf20-0", 100, 20, True]
+    ["test/UF20.91/uf20-0", 1000, 20, True],
+    #["test/UF50.218/uf50-0", 1000, 50, True],
+    #["test/UF75.325/uf75-0", 100, 75, True],
 ]
-quantity = "time"
+measures = [
+    "naive_solver",
+    "quine_solver"
+]
 plt.style.use("Solarize_Light2")
 
-measure(files, quantity)
+task = "graph"
 
-if quantity == "time":
-    c = coord_from_file("measures.txt")
-    graph(c, "Naive solver", "Nombre de litéraux")
+if task == "graph":
+    for solver in measures:
+        c = coord_from_file("measures/"+solver+".txt")
+        x, y = c[0], c[1]
+        plt.plot(x, y*1000, label=solver, marker='o')
 
     plt.title("Comparaison des solvers")
+    plt.xlabel("Nombre de litéraux")
+    plt.ylabel("Temps d'exécution moyen (en $ms$)")
     plt.legend()
     plt.show()
 
-if quantity == "bool":
+
+if task == "time":
+    measure(files, task)
+    c = coord_from_file("measures.txt")
+    x, y = c[0], c[1]
+    plt.plot(x, y*1000, marker='o')
+
+    plt.title("Comparaison des solvers")
+    plt.xlabel("Nombre de litéraux")
+    plt.ylabel("Temps d'exécution moyen (en $ms$)")
+    plt.legend()
+    plt.show()
+
+
+if task == "bool":
+    measure(files, task)
     b = bool_from_file("measures.txt")
     test = True
     i = 0
