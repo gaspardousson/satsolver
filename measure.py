@@ -47,23 +47,23 @@ def bool_from_file(path):
 
 
 files = [
-    ["test/UF20.91/uf20-0", 1000, 20, True],
+    ["test/UF20.91/uf20-0", 100, 20, True],
     #["test/UF50.218/uf50-0", 1000, 50, True],
-    #["test/UF75.325/uf75-0", 100, 75, True],
+    #["test/UUF50.218/uuf50-0", 100, 50, False],
 ]
 measures = [
-    #"naive_solver",
-    "quine_solver"
+    ["naive_solver", True],
+    ["quine_solver", True]
 ]
 plt.style.use("Solarize_Light2")
 
-task = "bool"
+task = "graph"
 
 if task == "graph":
     for solver in measures:
-        c = coord_from_file("measures/"+solver+".txt")
+        c = coord_from_file("measures/"+solver[0]+".txt")
         x, y = c[0], c[1]
-        plt.plot(x, y*1000, label=solver, marker='o')
+        plt.plot(x, y, label=solver[0], marker='x', linestyle='')
 
     plt.title("Comparaison des solvers")
     plt.xlabel("Nombre de litéraux")
@@ -76,7 +76,7 @@ if task == "time":
     measure(files, task)
     c = coord_from_file("measures.txt")
     x, y = c[0], c[1]
-    plt.plot(x, y*1000, marker='o')
+    plt.plot(x, y, marker='x')
 
     plt.title("Comparaison des solvers")
     plt.xlabel("Nombre de litéraux")

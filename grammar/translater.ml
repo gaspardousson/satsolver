@@ -18,14 +18,12 @@ let plf_of_string s =
 
 let read_cnf path =
 
-    let rec read_clause list depth =
+    let rec read_clause list =
         match list with
-            |[] -> Array.make depth 0
-            |["0"] -> Array.make depth 0
-            |""::q -> read_clause q depth
-            |t::q -> let clause = read_clause q (depth+1) in
-                        clause.(depth) <- int_of_string t;
-                        clause
+            |[] -> []
+            |["0"] -> []
+            |""::q -> read_clause q
+            |t::q -> (int_of_string t)::(read_clause q)
     in
 
     let rec read_line file depth =
@@ -33,9 +31,9 @@ let read_cnf path =
         match line.[0] with
             |'c' -> read_line file depth
             |'p' -> read_line file depth
-            |'%' -> Array.make depth [||]
+            |'%' -> Array.make depth []
             |_ -> let cnf = read_line file (depth+1) in
-                    cnf.(depth) <- read_clause (String.split_on_char ' ' line) 0;
+                    cnf.(depth) <- read_clause (String.split_on_char ' ' line);
                     cnf
     in
 
