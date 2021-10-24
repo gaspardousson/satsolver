@@ -1,0 +1,17 @@
+# CLion files
+
+**/.idea
+
+
+# Benchmark
+
+test
+
+# Mac hidden files
+
+**/.DS_Store
+
+# Measures
+
+measures
+**/measures.txt
