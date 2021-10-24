@@ -4,7 +4,7 @@ BUILDDIR = build
 
 VPATH=.:grammar:$(BUILDDIR)
 
-MODULES = language lexer parser translater satsolver
+MODULES = lexer parser translater satsolver
 
 BINARY = satsolver
 
@@ -36,8 +36,6 @@ $(BINARY): $(MODULES:%=$(BUILDDIR)/%.$(CMOX)) $(BUILDDIR)/main.$(CMOX)
 #- dependency graph
 .PRECIOUS: lexer.ml parser.mli
 
-$(BUILDDIR)/parser.mli: $(BUILDDIR)/language.cmi 
-$(BUILDDIR)/parser.$(CMOX): $(BUILDDIR)/language.cmi 
 $(BUILDDIR)/lexer.$(CMOX): $(BUILDDIR)/parser.cmi
 $(BUILDDIR)/translater.$(CMOX): $(BUILDDIR)/parser.cmi 
 $(BUILDDIR)/satsolver.$(CMOX): $(BUILDDIR)/translater.cmi 

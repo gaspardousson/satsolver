@@ -1,24 +1,23 @@
+%token PB
+%token EOC
+%token EOCNF
 %token <int> INT
-%token NOT
-%token CONJ DISJ
-%token LPAR RPAR
 %token EOF
 
-%left CONJ DISJ
-%nonassoc PREC_NOT
-
 %start main
-%type <Language.plf> main
+%type <int * int list list> main
 %%
 
 main :
-    |expr EOF { $1 }
+    PB INT INT
+    cnf EOC EOF { $2, $4 }
 ;
 
-expr :
-    |INT { Var $1 }
-    |NOT expr %prec PREC_NOT { Not $2 }
-    |LPAR expr CONJ expr RPAR { And ($2, $4) }
-    |LPAR expr DISJ expr RPAR { Or ($2, $4) }
-    |LPAR expr RPAR { $2 }
+cnf :
+    |clause cnf { $1::$2 }
+    |EOCNF { [] }
+
+clause :
+    |INT clause { $1::$2 }
+    |EOC { [] }
 ;

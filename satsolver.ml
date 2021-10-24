@@ -1,12 +1,14 @@
-(* Useful librairies *)
+(* Useful libraries *)
 
 open Int;;
+open Array;;
 
 
 
 (* Naive solver *)
 
-let naive_solver formula n_var =
+let naive_solver problem =
+    let n_var, formula = problem in
 
     let rec power_two n =
         match n with
@@ -19,13 +21,13 @@ let naive_solver formula n_var =
     let rec disj clause assignment =
         match clause with
             |[] -> false
-            |var::queue when var > 0 -> ((shift_right assignment (var - 1)) mod 2 = 1) || disj queue assignment
-            |var::queue -> ((shift_right assignment (- var - 1)) mod 2 = 0) || disj queue assignment
+            |var::queue when var > 0 -> ((shift_right assignment (var - 1)) land 1 = 1) || disj queue assignment
+            |var::queue -> ((shift_right assignment (- var - 1)) land 1 = 0) || disj queue assignment
     in
 
     let conj cnf assignment =
         let satisfied = ref true in
-        for i = 0 to Array.length cnf - 1 do
+        for i = 0 to length cnf - 1 do
             satisfied := !satisfied && disj cnf.(i) assignment
         done; !satisfied
     in
@@ -44,9 +46,10 @@ let naive_solver formula n_var =
 
 (* Quine solver *)
 
-let quine_solver formula n_var =
-    let n = Array.length formula in
-    let satisfied = Array.make n 0 in
+let quine_solver problem =
+    let n_var, formula = problem in
+    let n = length formula in
+    let satisfied = make n 0 in
 
     let rec is_conflictual clause i literal =
         match clause with
@@ -86,7 +89,7 @@ let quine_solver formula n_var =
 let dpll_solver formula n_var =
 
     (* TODO: Two watched literal *)
-    let twl = Array.make 0 (1, 2) in
+    let twl = make 0 (1, 2) in
 
     (* TODO: Unit propagation *)
     let propagate () =

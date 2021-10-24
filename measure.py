@@ -19,7 +19,7 @@ def measure(files, quantity):
     k = 0
     for f in files:
         print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
-        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + str(f[2]) + " " + quantity + " >> measures.txt")
+        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + quantity + " >> measures.txt")
         k += 1
     print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
 
@@ -47,9 +47,9 @@ def bool_from_file(path):
 
 
 files = [
-    ["test/UF20.91/uf20-0", 100, 20, True],
-    #["test/UF50.218/uf50-0", 1000, 50, True],
-    #["test/UUF50.218/uuf50-0", 100, 50, False],
+    ["test/UF20.91/uf20-0", 10, True],
+    #["test/UF50.218/uf50-0", 1000, True],
+    #["test/UUF50.218/uuf50-0", 100, False],
 ]
 measures = [
     ["naive_solver", True],
@@ -57,7 +57,7 @@ measures = [
 ]
 plt.style.use("Solarize_Light2")
 
-task = "graph"
+task = "bool"
 
 if task == "graph":
     for solver in measures:
@@ -79,7 +79,7 @@ if task == "time":
     plt.plot(x, y, marker='x')
 
     plt.title("Comparaison des solvers")
-    plt.xlabel("Nombre de litéraux")
+    plt.xlabel("Nombre de littéraux")
     plt.ylabel("Temps d'exécution moyen (en $ms$)")
     plt.legend()
     plt.show()
@@ -92,7 +92,7 @@ if task == "bool":
     i = 0
     for f in files:
         for j in range(1, f[1]+1):
-            if b[i] != f[3]:
+            if b[i] != f[2]:
                 test = False
                 print("\33[101m" + "Solver output doesn't match expected result on " + f[0] + str(j) + "\33[0m")
             i += 1
