@@ -1,7 +1,11 @@
 open Translater;;
 open Satsolver;;
 
-let solver = quine_solver;;
+
+
+let solver = dpll_solver;;
+
+
 
 let bool path n_pb =
     let prob = Array.make n_pb (0, [||]) in
@@ -15,6 +19,8 @@ let bool path n_pb =
     done
 ;;
 
+
+
 let time path n_pb =
     let prob = Array.make n_pb (0, [||]) in
     for i = 1 to n_pb do
@@ -27,6 +33,8 @@ let time path n_pb =
     let t1 = Sys.time () in
     print_endline (string_of_int (fst prob.(0)) ^ "-" ^ string_of_float ((t1-.t0)*.1000./.(float_of_int n_pb)))
 ;;
+
+
 
 let () =
     match Array.length Sys.argv with

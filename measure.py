@@ -47,9 +47,13 @@ def bool_from_file(path):
 
 
 files = [
-    ["test/UF20.91/uf20-0", 10, True],
-    #["test/UF50.218/uf50-0", 1000, True],
+    ["test/UF20.91/uf20-0", 1000, True],
+    ["test/UF50.218/uf50-0", 1000, True],
+    ["test/UF75.325/uf75-0", 100, True],
+    ["test/UF100.430/uf100-0", 100, True],
     #["test/UUF50.218/uuf50-0", 100, False],
+    #["test/UUF75.325/uuf75-0", 100, False],
+    #["test/UUF100.430/uuf100-0", 100, False],
 ]
 measures = [
     ["naive_solver", True],
@@ -57,7 +61,7 @@ measures = [
 ]
 plt.style.use("Solarize_Light2")
 
-task = "bool"
+task = "time"
 
 if task == "graph":
     for solver in measures:
