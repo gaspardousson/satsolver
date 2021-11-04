@@ -1,10 +1,5 @@
-(* Useful libraries *)
-
-open Int;;
-
-
-
 (* Naive solver *)
+open Int
 
 let naive_solver problem =
     let n_var, formula = problem in
@@ -83,117 +78,154 @@ let quine_solver problem =
 
 
 
-(* to_propagate: DPLL solver *)
+(* DPLL solver *)
 
 let dpll_solver problem =
-    let n_var, formula = problem in
-    let n = Array.length formula in
-    let watchers = Array.make (n_var+1) [] in
-    let to_propagate = ref [] in
+    let n_atoms, form = problem in
+    let n_clauses = Array.length form in
+    let watching = Array.make (n_atoms+1) [] in
 
-    (* propagation *)
-    let rec search_new_watcher clause assignment =
-        match clause with
-            |[] -> 0, []
-            |lit::queue -> if assignment.(abs lit) = -lit
-                                then let w, c = search_new_watcher queue assignment in
-                                    w, lit::c
-                                else lit, queue
-    in
-
-    let propagate_clause c var assignment =
-        match formula.(c) with
-            |[] -> failwith "Empty clause"
-            |[lit] -> failwith "Unit clause"
-            |lit1::lit2::queue -> let var1, var2 = abs lit1, abs lit2 in
-                                    match assignment.(var1), assignment.(var2) with
-                                        |asgn1, asgn2 when asgn1 = lit1 || asgn2 = lit2 ->
-                                            true, true
-                                        |0, asgn2 ->
-                                            let w, q = search_new_watcher queue assignment in
-                                            if w = 0
-                                                then (assignment.(var1) <- lit1; to_propagate := var1::!to_propagate; true, true)
-                                                else (let v = abs w in watchers.(v) <- c::watchers.(v);
-                                                    formula.(c) <- lit1::w::lit2::q; true, false);
-                                        |asgn1, 0 ->
-                                            let w, q = search_new_watcher queue assignment in
-                                            if w = 0
-                                                then (assignment.(var2) <- lit2; to_propagate := var2::!to_propagate; true, true)
-                                                else (let v = abs w in watchers.(v) <- c::watchers.(v);
-                                                    formula.(c) <- w::lit2::lit1::q; true, false);
-                                        |_ ->
-                                            let w, q = search_new_watcher queue assignment in
-                                            if w = 0
-                                                then false, true
-                                            else begin
-                                            	    let v = abs w in assignment.(v) <- w;
-                                            	    watchers.(v) <- c::watchers.(v);
-                                            	    formula.(c) <- if var1 = var then w::lit2::lit1::q else lit1::w::lit2::q;
-                                            	    to_propagate := v::!to_propagate; true, false
-                                            	end
-    in
-
-    let rec propagate_variable watching var assignment =
-        match watching with
-            |[] -> true, []
-            |clause::queue -> let clause_propagated, watching_it = propagate_clause clause var assignment in
-                              if clause_propagated
-                              then let propagated, still_watching = propagate_variable queue var assignment in
-                                    propagated, if watching_it then clause::still_watching else still_watching
-                              else false, watching
-    in
-
-    let rec propagate assignment =
-        match !to_propagate with
+    (* prop *)
+    let rec propagate todo asgn =
+        match todo with
             |[] -> true
-            |var::queue -> to_propagate := queue;
-                           let propagated, still_watching = propagate_variable watchers.(var) var assignment in
-                           watchers.(var) <- still_watching;
-                           propagated && propagate assignment
+            |atom::todo ->
+                let todo = ref todo in
+    
+                let rec search_new_watcher unused =
+                    match unused with
+                        |[] -> 0, []
+                        |new_ion::unused ->
+                            let new_atom = abs new_ion in
+                            if asgn.(new_atom) = -new_ion
+                                then let watcher, unused = search_new_watcher unused in
+                                    watcher, new_ion::unused
+                                else new_ion, unused
+                in
+    
+                let prop_clause clause =
+                    match form.(clause) with
+                        |[] -> failwith "Empty clause"
+                        |[ion] -> failwith "Unit clause"
+
+                        |ion::ion2::unused when abs ion = atom ->
+                            let atom2 = abs ion2 in
+                            begin match asgn.(atom), asgn.(atom2) with
+                                |asgn1, asgn2 when asgn1 = ion || asgn2 = ion2 ->
+                                    true, true
+                                |asgn1, 0 ->
+                                    let ion1, unused = search_new_watcher unused in
+                                    if ion1 = 0
+                                        then begin
+                                            asgn.(atom2) <- ion2;
+                                            todo := atom2::!todo;
+                                            true, true
+                                        end else begin
+                                            let atom1 = abs ion1 in watching.(atom1) <- clause::watching.(atom1);
+                                            form.(clause) <- ion1::ion2::ion::unused;
+                                            true, false
+                                        end
+                                |_ ->
+                                    let ion1, unused = search_new_watcher unused in
+                                    if ion1 = 0
+                                        then false, true
+                                        else begin
+                                            let atom1 = abs ion1 in asgn.(atom1) <- ion1;
+                                            watching.(atom1) <- clause::watching.(atom1);
+                                            form.(clause) <- ion1::ion2::ion::unused;
+                                            todo := atom1::!todo;
+                                            true, false
+                                        end
+                            end
+
+                        |ion1::ion::unused when abs ion = atom ->
+                             let atom1 = abs ion1 in
+                             begin match asgn.(atom1), asgn.(atom) with
+                                 |asgn1, asgn2 when asgn1 = ion1 || asgn2 = ion ->
+                                     true, true
+                                 |0, asgn2 ->
+                                     let ion2, unused = search_new_watcher unused in
+                                     if ion2 = 0
+                                         then begin
+                                             asgn.(atom1) <- ion1;
+                                             todo := atom1::!todo;
+                                             true, true
+                                         end else begin
+                                             let atom2 = abs ion2 in watching.(atom2) <- clause::watching.(atom2);
+                                             form.(clause) <- ion1::ion2::ion::unused;
+                                             true, false
+                                         end
+                                 |_ ->
+                                     let ion2, unused = search_new_watcher unused in
+                                     if ion2 = 0
+                                         then false, true
+                                         else begin
+                                            let atom2 = abs ion2 in asgn.(atom2) <- ion2;
+                                            watching.(atom2) <- clause::watching.(atom2);
+                                            form.(clause) <- ion1::ion2::ion::unused;
+                                            todo := atom2::!todo;
+                                            true, false
+                                         end
+                             end
+
+                        |_ -> failwith "Watcher not found"
+                in
+    
+                let rec prop_atom watched =
+                    match watched with
+                        |[] -> true, []
+                        |clause::watched -> let clause_propagated, watching_it = prop_clause clause in
+                                        if clause_propagated
+                                        then let atom_propagated, still_watched = prop_atom watched in
+                                            atom_propagated, if watching_it then clause::still_watched else still_watched
+                                        else false, clause::watched
+                in
+    
+                let atom_propagated, still_watched = prop_atom watching.(atom) in
+                watching.(atom) <- still_watched;
+                atom_propagated && propagate !todo asgn
     in
 
     (* main *)
-    let rec main assignment =
-        let asgn = Array.copy assignment in
-        if propagate asgn
+    let rec main todo asgn =
+        let asgn = Array.copy asgn in
+        if propagate todo asgn
             then begin
-                let var = ref 1 in
-                while !var <= n_var && asgn.(!var) <> 0 do
-                    incr var
+                let atom = ref 1 in
+                while !atom <= n_atoms && asgn.(!atom) <> 0 do
+                    incr atom
                 done;
-                (!var > n_var) ||
-                (asgn.(!var) <- !var; to_propagate := !var::!to_propagate; main asgn) ||
-                (asgn.(!var) <- - !var; to_propagate := !var::!to_propagate; main asgn)
+                (!atom > n_atoms) ||
+                (asgn.(!atom) <- !atom; main [!atom] asgn) ||
+                (asgn.(!atom) <- - !atom; main [!atom] asgn)
             end
-            else begin
-                to_propagate := [];
-                false
-            end
+            else false
     in
 
     (* init *)
-    let assignment = Array.make (n_var+1) 0 in
-    let empty_clause = ref false in
-    for c = 0 to n-1 do
-        let w1, q1 = search_new_watcher formula.(c) assignment in
-        let v1 = abs w1 in
-        if w1 = 0
-            then empty_clause := true
-            else watchers.(v1) <- c::watchers.(v1);
-        let w2, q2 = search_new_watcher q1 assignment in
-        let v2 = abs w2 in
-        if w2 = 0
-            then (assignment.(v1) <- w1; to_propagate := v1::!to_propagate)
-            else watchers.(v2) <- c::watchers.(v2);
-        if v1 = v2 then failwith "Repetition";
+    let asgn = Array.make (n_atoms+1) 0 in
+
+    let search_two_watchers clause =
+            match clause with
+                |[] -> failwith "Empty clause"
+                |[ion] -> failwith "Unit clause"
+                |ion1::ion2::unused when abs ion1 = abs ion2 -> failwith "Repetition"
+                |ion1::ion2::unused -> ion1, ion2
+    in
+
+    for clause = 0 to n_clauses-1 do
+        let ion1, ion2 = search_two_watchers form.(clause) in
+        let atom1, atom2 = abs ion1, abs ion2 in
+        watching.(atom1) <- clause::watching.(atom1);
+        watching.(atom2) <- clause::watching.(atom2);
     done;
 
-    main assignment
+    main [] asgn
 ;;
 
 
 
-(* to_propagate: CDCL solver *)
+(* TODO: CDCL solver *)
 
 let cdcl_solver problem =
     ()
