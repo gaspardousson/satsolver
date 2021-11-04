@@ -4,7 +4,7 @@ BUILDDIR = build
 
 VPATH=.:grammar:$(BUILDDIR)
 
-MODULES = lexer parser translater satsolver
+MODULES = lexer parser translater auxiliary satsolver
 
 BINARY = satsolver
 
@@ -38,7 +38,8 @@ $(BINARY): $(MODULES:%=$(BUILDDIR)/%.$(CMOX)) $(BUILDDIR)/main.$(CMOX)
 
 $(BUILDDIR)/lexer.$(CMOX): $(BUILDDIR)/parser.cmi
 $(BUILDDIR)/translater.$(CMOX): $(BUILDDIR)/parser.cmi 
-$(BUILDDIR)/satsolver.$(CMOX): $(BUILDDIR)/translater.cmi 
+$(BUILDDIR)/satsolver.$(CMOX): $(BUILDDIR)/auxiliary.cmi
+$(BUILDDIR)/main.$(CMOX): $(BUILDDIR)/translater.cmi
 $(BUILDDIR)/main.$(CMOX): $(BUILDDIR)/satsolver.cmi 
 
 

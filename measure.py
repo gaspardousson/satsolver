@@ -47,7 +47,7 @@ def bool_from_file(path):
 
 
 files = [
-    ["test/UF20.91/uf20-0", 1000, True],
+    ["test/UF20.91/uf20-0", 100, True],
     ["test/UF50.218/uf50-0", 100, True],
     ["test/UF75.325/uf75-0", 100, True],
     ["test/UF100.430/uf100-0", 100, True],
