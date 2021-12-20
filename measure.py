@@ -12,96 +12,120 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, length=10
         print()
 
 
-def measure(files, quantity):
+def measure(f):
     os.system("touch measures.txt")
     os.system("rm measures.txt")
     os.system("touch measures.txt")
     k = 0
-    for f in files:
-        print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
-        os.system("./satsolver-opt " + f[0] + " " + str(f[1]) + " " + quantity + " >> measures.txt")
+    for file in f:
+        print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+        os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " time >> measures.txt")
         k += 1
-    print_progress(k, len(files), prefix='Progress:', suffix='Complete', length=50)
+    print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
 
 
 def coord_from_file(path):
-    x, y = [0], [7*10**-3]
+    x1, x2, y, e = [], [], [], []
     file = open(path, "r")
     for m in file.read().split("\n"):
         if m != "":
-            m1, m2 = m.split("-")
-            x.append(int(m1))
-            y.append(float(m2))
-    return np.array([np.array(x), np.array(y)])
+            m1, m2, m3, m4 = m.split("-")
+            x1.append(int(m1))
+            x2.append(int(m2))
+            y.append(float(m3))
+            e.append(float(m4))
+    return np.array([np.array(x1), np.array(x2), np.array(y), np.array(e)])
 
 
-def bool_from_file(path):
+def test(f):
+    os.system("touch measures.txt")
+    os.system("rm measures.txt")
+    os.system("touch measures.txt")
+
+    k = 0
+    for file in f:
+        print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+        os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " >> measures.txt")
+        k += 1
+    print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+
     b = []
-    file = open(path, "r")
+    file = open("measures.txt", "r")
     for m in file.read().split("\n"):
         if m == "sat":
             b.append(True)
         if m == "unsat":
             b.append(False)
-    return b
+
+    expected = True
+    i = 0
+    for file in f:
+        for j in range(1, file[1] + 1):
+            if b[i] != file[2]:
+                expected = False
+                print("\33[101m" + "Solver output doesn't match expected result on " + file[0] + str(j) + "\33[0m")
+            i += 1
+    if expected:
+        print("\33[102m" + "Test successfully passed!" + "\33[0m")
+
+
+def graph(limit, solver, sigma=3):
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax2 = ax1.secondary_xaxis('top', functions=(lambda x: 4.26*x+5.23, lambda y: (y-5.23)/4.26))
+
+    if limit != 0:
+        x = range(0, 150)
+        y = [1000 * limit] * len(x)
+        ax1.plot(x, y, label="limit", linestyle='-')
+
+    for s in solver:
+        c = coord_from_file("measures/" + s + ".txt")
+        x1, x2, y, e = c[0], c[1], c[2], c[3]
+
+        fit = np.polyfit(x1, np.log(y), 1)
+        f = np.poly1d(fit)
+        x0 = [1]
+        y0 = [np.exp(f(1))]
+
+        while y0[-1] < 1200:
+            x0.append(x0[-1] + 1)
+            y0.append(np.exp(f(x0[-1])))
+
+        ax1.plot(x0, y0, label=s + " (model)", marker='', linestyle='--')
+        ax1.errorbar(x1, y, yerr=sigma*e, label=s + " (data)", marker='x', linestyle='')
+
+    plt.title("Comparaison des solvers")
+    ax1.set_xlabel("Nombre de variables")
+    ax2.set_xlabel("Nombre de clauses")
+    plt.ylabel("Temps d'exécution moyen (en $ms$)")
+    plt.yscale("log")
+    plt.legend()
+    plt.show()
 
 
 files = [
-    ["test/UF20.91/uf20-0", 100, True],
-    ["test/UF50.218/uf50-0", 100, True],
+    ["test/UF20.91/uf20-0", 1000, True],
+    ["test/UF50.218/uf50-0", 1000, True],
     ["test/UF75.325/uf75-0", 100, True],
-    ["test/UF100.430/uf100-0", 100, True],
+    #["test/UF100.430/uf100-0", 1000, True],
     #["test/UF125.538/uf125-0", 100, True],
+    #["test/UF150.645/uf150-0", 100, True],
     ["test/UUF50.218/uuf50-0", 1000, False],
-    ["test/UUF75.325/uuf75-0", 100, False],
-    ["test/UUF100.430/uuf100-0", 100, False],
+    #["test/UUF75.325/uuf75-0", 100, False],
+    #["test/UUF100.430/uuf100-0", 1000, False],
 ]
 measures = [
-    ["naive_solver", True],
-    ["quine_solver", True],
-    ["dpll_solver", True]
+    # "naive_solver",
+    "quine_solver",
+    "dpll_solver"
 ]
-plt.style.use("Solarize_Light2")
+plt.style.use("ggplot")
 
-task = "bool"
-
-if task == "graph":
-    for solver in measures:
-        c = coord_from_file("measures/"+solver[0]+".txt")
-        x, y = c[0], c[1]
-        plt.plot(x, y, label=solver[0], marker='x', linestyle='')
-
-    plt.title("Comparaison des solvers")
-    plt.xlabel("Nombre de litéraux")
-    plt.ylabel("Temps d'exécution moyen (en $ms$)")
-    #plt.yscale("log")
-    plt.legend()
-    plt.show()
-
-
-if task == "time":
-    measure(files, task)
-    c = coord_from_file("measures.txt")
-    x, y = c[0], c[1]
-    plt.plot(x, y, marker='x')
-
-    plt.title("Comparaison des solvers")
-    plt.xlabel("Nombre de littéraux")
-    plt.ylabel("Temps d'exécution moyen (en $ms$)")
-    plt.legend()
-    plt.show()
-
-
-if task == "bool":
-    measure(files, task)
-    b = bool_from_file("measures.txt")
-    test = True
-    i = 0
-    for f in files:
-        for j in range(1, f[1]+1):
-            if b[i] != f[2]:
-                test = False
-                print("\33[101m" + "Solver output doesn't match expected result on " + f[0] + str(j) + "\33[0m")
-            i += 1
-    if test:
-        print("\33[102m" + "Test successfully passed!" + "\33[0m")
+test(files)
+#measure(files)
+graph(0, [
+    # "naive_solver",
+    #"quine_solver",
+    "dpll_solver"
+], sigma=2)

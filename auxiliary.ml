@@ -29,7 +29,6 @@ let ionize atom =
 
 (* Two watched literals *)
 
-(* First reading *)
 let init_watching n_atoms cnf =
 (*
     Input:
@@ -60,7 +59,6 @@ let init_watching n_atoms cnf =
     asgn, watching
 ;;
 
-(* Conflict checking *)
 let check_conflict cnf asgn =
 (*
     Input:
@@ -86,7 +84,6 @@ let check_conflict cnf asgn =
     !conflict
 ;;
 
-(* Unit propagation *)
 let rec propagate todo watching cnf asgn =
 (*
     Input:

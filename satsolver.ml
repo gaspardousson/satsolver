@@ -3,7 +3,7 @@ open Auxiliary
 (* Naive solver *)
 
 let naive_solver problem =
-    let n_atoms, cnf = problem in
+    let n_atoms, n_laws, cnf = problem in
 
     let rec main todo asgn =
         let asgn = Array.copy asgn in
@@ -24,7 +24,7 @@ let naive_solver problem =
 (* Quine solver *)
 
 let quine_solver problem =
-    let n_atoms, cnf = problem in
+    let n_atoms, n_laws, cnf = problem in
 
     let rec main todo asgn =
         let asgn = Array.copy asgn in
@@ -49,7 +49,7 @@ let quine_solver problem =
 (* DPLL solver *)
 
 let dpll_solver problem =
-    let n_atoms, cnf = problem in
+    let n_atoms, n_laws, cnf = problem in
     let asgn, watching = init_watching n_atoms cnf in
 
     let rec main todo asgn =
@@ -74,5 +74,8 @@ let dpll_solver problem =
 (* TODO: CDCL solver *)
 
 let cdcl_solver problem =
+    let n_atoms, n_laws, cnf = problem in
+    let asgn, watching = init_watching n_atoms cnf in
+    let knwldg = Array.make 1 [] in
     ()
 ;;

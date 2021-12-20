@@ -5,12 +5,12 @@
 %token EOF
 
 %start main
-%type <int * int list list> main
+%type <int * int * int list list> main
 %%
 
 main :
     PB INT INT
-    cnf EOC EOF { $2, $4 }
+    cnf EOC EOF { $2, $3, $4 }
 ;
 
 cnf :

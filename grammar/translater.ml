@@ -9,6 +9,6 @@ let read_cnf path =
         s
     in
 
-    let n_var, cnf = Parser.main Lexer.read_token (Lexing.from_string (read_whole_file path))
-    in n_var, Array.of_list cnf
+    let n_var, n_cla, cnf = Parser.main Lexer.read_token (Lexing.from_string (read_whole_file path))
+    in n_var, n_cla, Array.of_list cnf
 ;;
