@@ -3,7 +3,7 @@ open Satsolver;;
 
 
 
-let solver = dpll_solver;;
+let solver = cdcl_solver;;
 
 
 let mu a =
