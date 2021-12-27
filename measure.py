@@ -3,11 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def print_progress(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='\uEE04', print_end="\r"):
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
-    bar = fill * filled_length + '\uEE01' * (length - filled_length)
-    print(f'\r{prefix} \uEE03{bar}\uEE02 {percent}% {suffix}', end=print_end)
+def print_progress(iteration, total, length=100, print_end="\r"):
+    progress = int(length * iteration // total)
+    bar = '\uEE04' * progress + '\uEE01' * (length - progress)
+    if progress == 0: print(f'\uEE00{bar}\uEE02', end=print_end)
+    elif progress == length: print(f'\uEE03{bar}\uEE05', end=print_end)
+    else: print(f'\uEE03{bar}\uEE02', end=print_end)
     if iteration == total:
         print()
 
@@ -18,10 +19,10 @@ def measure(f):
     os.system("touch measures.txt")
     k = 0
     for file in f:
-        print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+        print_progress(k, len(f))
         os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " time >> measures.txt")
         k += 1
-    print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+    print_progress(k, len(f))
 
 
 def coord_from_file(path):
@@ -44,10 +45,10 @@ def test(f):
 
     k = 0
     for file in f:
-        print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+        print_progress(k, len(f))
         os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " >> measures.txt")
         k += 1
-    print_progress(k, len(f), prefix='Progress:', suffix='Complete', length=50)
+    print_progress(k, len(f))
 
     b = []
     file = open("measures.txt", "r")
@@ -106,8 +107,8 @@ def graph(limit, solver, sigma=3):
 
 files = [
     ["test/UF20.91/uf20-0", 1000, True],
-    #["test/UF50.218/uf50-0", 1000, True],
-    #["test/UF75.325/uf75-0", 100, True],
+    ["test/UF50.218/uf50-0", 1000, True],
+    ["test/UF75.325/uf75-0", 100, True],
     #["test/UF100.430/uf100-0", 1000, True],
     #["test/UF125.538/uf125-0", 100, True],
     #["test/UF150.645/uf150-0", 100, True],
