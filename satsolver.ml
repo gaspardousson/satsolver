@@ -5,25 +5,27 @@ open Auxiliary
 let naive_solver problem =
     let n_atoms, n_laws, cnf = problem in
 
-    let rec main level todo asgn =
+    let rec main level ion asgn =
         let asgn = Array.copy asgn in
+        let atom = abs ion in asgn.(atom) <- ion;
+
         let atom = branch n_atoms asgn in
         if atom > n_atoms
             then if check_conflict cnf asgn
                     then Sat
                     else Backtrack
             else let ion = ionize atom in
-                match (asgn.(atom) <- ion; main (level+1) [atom] asgn) with
+                match main (level+1) ion asgn with
                     |Sat -> Sat
                     |Backtrack ->
-                match (asgn.(atom) <- -ion; main (level+1) [atom] asgn) with
+                match main (level+1) (-ion) asgn with
                     |Sat -> Sat
                     |Backtrack ->
                 Backtrack
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
-    Sat = main 0 [] asgn
+    Sat = main 0 0 asgn
 ;;
 
 
@@ -33,18 +35,20 @@ let naive_solver problem =
 let quine_solver problem =
     let n_atoms, n_laws, cnf = problem in
 
-    let rec main level todo asgn =
+    let rec main level ion asgn =
         let asgn = Array.copy asgn in
+        let atom = abs ion in asgn.(atom) <- ion;
+
         if check_conflict cnf asgn
             then begin
                 let atom = branch n_atoms asgn in
                 if atom > n_atoms
                     then Sat
                     else let ion = ionize atom in
-                        match (asgn.(atom) <- ion; main (level+1) [atom] asgn) with
+                        match main (level+1) ion asgn with
                             |Sat -> Sat
                             |Backtrack ->
-                        match (asgn.(atom) <- -ion; main (level+1) [atom] asgn) with
+                        match main (level+1) (-ion) asgn with
                             |Sat -> Sat
                             |Backtrack ->
                         Backtrack
@@ -52,7 +56,7 @@ let quine_solver problem =
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
-    Sat = main 0 [] asgn
+    Sat = main 0 0 asgn
 ;;
 
 
