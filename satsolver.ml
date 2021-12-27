@@ -9,14 +9,21 @@ let naive_solver problem =
         let asgn = Array.copy asgn in
         let atom = branch n_atoms asgn in
         if atom > n_atoms
-            then check_conflict cnf asgn
+            then if check_conflict cnf asgn
+                    then Sat
+                    else Backtrack
             else let ion = ionize atom in
-                (asgn.(atom) <- ion; main (level+1) [atom] asgn) ||
-                (asgn.(atom) <- -ion; main (level+1) [atom] asgn)
+                match (asgn.(atom) <- ion; main (level+1) [atom] asgn) with
+                    |Sat -> Sat
+                    |Backtrack ->
+                match (asgn.(atom) <- -ion; main (level+1) [atom] asgn) with
+                    |Sat -> Sat
+                    |Backtrack ->
+                Backtrack
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
-    main 0 [] asgn
+    Sat = main 0 [] asgn
 ;;
 
 
@@ -32,15 +39,20 @@ let quine_solver problem =
             then begin
                 let atom = branch n_atoms asgn in
                 if atom > n_atoms
-                    then true
+                    then Sat
                     else let ion = ionize atom in
-                         (asgn.(atom) <- ion; main (level+1) [atom] asgn) ||
-                         (asgn.(atom) <- -ion; main (level+1) [atom] asgn)
-                end else false
+                        match (asgn.(atom) <- ion; main (level+1) [atom] asgn) with
+                            |Sat -> Sat
+                            |Backtrack ->
+                        match (asgn.(atom) <- -ion; main (level+1) [atom] asgn) with
+                            |Sat -> Sat
+                            |Backtrack ->
+                        Backtrack
+            end else Backtrack
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
-    main 0 [] asgn
+    Sat = main 0 [] asgn
 ;;
 
 
@@ -53,24 +65,29 @@ let dpll_solver problem =
 
     let rec main level todo asgn =
         let asgn = Array.copy asgn in
-        if propagate todo watching cnf asgn
+        if propagate level todo watching (ref []) cnf asgn
             then begin
                 let atom = branch n_atoms asgn in
                 if atom > n_atoms
-                    then true
+                    then Sat
                     else let ion = ionize atom in
-                    	(asgn.(atom) <- ion; main (level+1) [atom] asgn) ||
-                        (asgn.(atom) <- -ion; main (level+1) [atom] asgn)
-            end else false
+                    	match (asgn.(atom) <- ion; main (level+1) [atom] asgn) with
+                    	    |Sat -> Sat
+                    	    |Backtrack ->
+                    	match (asgn.(atom) <- -ion; main (level+1) [atom] asgn) with
+                    	    |Sat -> Sat
+                    	    |Backtrack ->
+                        Backtrack
+            end else Backtrack
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
-    main 0 [] asgn
+    Sat = main 0 [] asgn
 ;;
 
 
 
-(* TODO: CDCL solver *)
+(* CDCL solver *)
 
 let cdcl_solver problem =
     let n_atoms, n_laws, cnf = problem in
@@ -82,25 +99,31 @@ let cdcl_solver problem =
     let rec main level todo graph asgn =
         let asgn = Array.copy asgn in
         let graph = ref graph in
-        if propagate_with_memory level todo n_atoms watching graph cnf asgn
+        if propagate level todo watching graph cnf asgn
             then begin
                 let atom = branch n_atoms asgn in
                 if atom > n_atoms
-                    then true
-                    else (let ion = ionize atom in
-                        graph := ((level+1), atom, -1)::!graph;
-                    	(asgn.(atom) <- ion; main (level+1) [atom] !graph asgn) ||
-                        (asgn.(atom) <- -ion; main (level+1) [atom] !graph asgn))
+                    then SAT
+                    else let ion = ionize atom in
+                    	match (asgn.(atom) <- ion; main (level+1) [atom] ((level+1,ion,-1)::!graph) asgn) with
+                    	    |SAT -> SAT
+                    	    |Backjump (uip, c, l) ->
+                    	        asgn.(atom) <- 0;
+                    	        if l = level then begin
+                    	            let atom = abs uip in
+                                    asgn.(atom) <- -uip;
+                                    main level [atom] ((level,-uip,c)::!graph) asgn
+                                end else Backjump (uip, c, l)
+                            |UNSAT -> UNSAT
             end else begin
-                ignore(analyze_the_memory !n_clauses watching (Array.of_list !graph) cnf);
                 incr n_clauses;
-            	if !n_clauses = memory
+            	if !n_clauses > memory
                     then failwith "Clause memory overflow";
-                false
+                analyze (!n_clauses-1) watching (Array.of_list !graph) cnf
             end
     in
 
     let asgn = Array.make (n_atoms+1) 0 in
     let graph = [] in
-    main 0 [] graph asgn
+    SAT = (main 0 [] graph asgn)
 ;;
