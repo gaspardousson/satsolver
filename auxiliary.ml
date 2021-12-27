@@ -418,7 +418,7 @@ let analyze position watching graph cnf =
                     |ion::clause -> ion::simplify (remove ion clause)
             in
 
-            if !backjump = c_level then failwith "Backjumping in a conflict area ";
+            if !backjump = c_level then failwith "Back-jumping in a conflict area ";
 
             learnt_clause := simplify !learnt_clause;
             learnt_clause := remove (- !uip) !learnt_clause;
