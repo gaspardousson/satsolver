@@ -9,7 +9,7 @@ let naive_solver problem =
         let asgn = Array.copy asgn in
         let atom = abs ion in asgn.(atom) <- ion;
 
-        let atom = branch n_atoms asgn in
+        let atom = naive_branch n_atoms asgn in
         if atom > n_atoms
             then if check_conflict cnf asgn
                     then Sat
@@ -34,6 +34,7 @@ let naive_solver problem =
 
 let quine_solver problem =
     let n_atoms, n_laws, cnf = problem in
+    let occ = init_occ n_atoms cnf in
 
     let rec main level ion asgn =
         let asgn = Array.copy asgn in
@@ -41,7 +42,7 @@ let quine_solver problem =
 
         if check_conflict cnf asgn
             then begin
-                let atom = branch n_atoms asgn in
+                let atom = occ_branch n_atoms occ asgn in
                 if atom > n_atoms
                     then Sat
                     else let ion = ionize atom in
@@ -65,7 +66,8 @@ let quine_solver problem =
 
 let dpll_solver problem =
     let n_atoms, n_laws, cnf = problem in
-    let watching = init_watching n_atoms cnf in
+    let watching = init_watching n_atoms n_laws cnf in
+    let occ = init_occ n_atoms cnf in
 
     let rec main level ion graph asgn =
         let asgn = Array.copy asgn in
@@ -74,7 +76,7 @@ let dpll_solver problem =
 
         if propagate level [atom] watching graph cnf asgn
             then begin
-                let atom = branch n_atoms asgn in
+                let atom = occ_branch n_atoms occ asgn in
                 if atom > n_atoms
                     then Sat
                     else let ion = ionize atom in
@@ -98,7 +100,8 @@ let dpll_solver problem =
 
 let cdcl_solver problem =
     let n_atoms, n_laws, cnf = problem in
-    let watching = init_watching n_atoms cnf in
+    let watching = init_watching n_atoms n_laws cnf in
+    let occ = init_occ n_atoms cnf in
 
     let cnf = extend cnf n_laws 1000000 in
     let memory, n_clauses = Array.length cnf, ref n_laws in
@@ -110,7 +113,7 @@ let cdcl_solver problem =
 
         if propagate level [atom] watching graph cnf asgn
             then begin
-                let atom = branch n_atoms asgn in
+                let atom = occ_branch n_atoms occ asgn in
                 if atom > n_atoms
                     then SAT
                     else let ion = ionize atom in
@@ -122,10 +125,9 @@ let cdcl_solver problem =
                                 end else Backjump (uip, c, l)
                             |UNSAT -> UNSAT
             end else begin
-                incr n_clauses;
-            	if !n_clauses > memory
+            	if !n_clauses >= memory
                     then failwith "Clause memory overflow";
-                analyze (!n_clauses-1) watching (Array.of_list !graph) cnf
+                analyze n_clauses watching occ (Array.of_list !graph) cnf
             end
     in
 

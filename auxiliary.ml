@@ -88,7 +88,7 @@ type backjump = SAT | Backjump of int * int * int | UNSAT;;
 
 (* Heuristics *)
 
-let branch n_atoms asgn =
+let naive_branch n_atoms asgn =
 (*
     Input:
         [int]                   Number of atoms
@@ -103,6 +103,24 @@ let branch n_atoms asgn =
     !atom
 ;;
 
+let occ_branch n_atoms occ asgn =
+(*
+    Input:
+        [int]                   Number of atoms
+        [int array]             Ionization of atoms
+        [int array]             Occurrences of atoms
+    Output:
+        [int]                   Atom to ionize
+*)
+    let atom = ref 0 in
+    for a = 1 to n_atoms do
+        if asgn.(a) = 0 && occ.(a) > occ.(!atom)
+            then atom := a
+    done;
+    if !atom = 0 then atom := n_atoms+1;
+    !atom
+;;
+
 let ionize atom =
 (*
     Input:
@@ -111,6 +129,32 @@ let ionize atom =
         [int]                   Natural ion
 *)
     atom
+;;
+
+let init_occ n_atoms cnf =
+(*
+    Input:
+        [int]                   Number of atoms
+        [int list array]        Logical formula (cnf)
+    Output:
+        [int * int]             Two watchers
+*)
+    let occ = Array.make (n_atoms+1) 0 in
+    let n_laws = Array.length cnf in
+
+    let rec count occ clause =
+        match clause with
+            |[] -> ()
+            |ion::clause -> let atom = abs ion in
+                            occ.(atom) <- occ.(atom)+1;
+                            count occ clause
+    in
+
+    for clause = 0 to n_laws-1 do
+        count occ cnf.(clause)
+    done;
+
+    occ
 ;;
 
 
@@ -131,7 +175,7 @@ let search_two_watchers clause =
                 |ion1::ion2::unused -> abs ion1, abs ion2
 ;;
 
-let init_watching n_atoms cnf =
+let init_watching n_atoms n_laws cnf =
 (*
     Input:
         [int]                   Number of atoms
@@ -140,9 +184,8 @@ let init_watching n_atoms cnf =
         [int list array]        Clauses watched by atoms
 *)
     let watching = Array.make (n_atoms+1) [] in
-    let n_clauses = Array.length cnf in
 
-    for clause = 0 to n_clauses-1 do
+    for clause = 0 to n_laws-1 do
         let atom1, atom2 = search_two_watchers cnf.(clause) in
         watching.(atom1) <- clause::watching.(atom1);
         watching.(atom2) <- clause::watching.(atom2);
@@ -203,16 +246,6 @@ let rec propagate level todo watching graph cnf asgn =
                             else new_ion, unused
             in
 
-            let unwatch atom clause watching =
-                let rec remove_first x list =
-                    match list with
-                        |[] -> []
-                        |head::tail when head = x -> tail
-                        |head::tail -> head::(remove_first x tail)
-                in
-                watching.(atom) <- remove_first clause watching.(atom)
-            in
-
             let prop_clause clause =
                 match cnf.(clause) with
                     |[] -> failwith "Empty clause"
@@ -238,26 +271,12 @@ let rec propagate level todo watching graph cnf asgn =
                             |_ ->
                                 let atom2 = abs ion2 in
                                 let ion1, unused = search_new_watcher unused in
-                                let ion3, unused = search_new_watcher unused in
-                                begin match ion1, ion3 with
-                                    |0, 0 -> graph := (level, -asgn.(atom2), clause)::!graph;
-                                            false, true
-                                    |_, 0 -> let atom1 = abs ion1 in
-                                            if asgn.(atom2) = 0
-                                                then begin
-                                                    asgn.(atom1) <- ion1;
-                                                    graph := (level, ion1, clause)::!graph;
-                                                    todo := atom2::!todo;
-                                                end;
-                                            watching.(atom1) <- clause::watching.(atom1);
-                                            cnf.(clause) <- ion1::ion2::ion::unused;
-                                            true, false
-                                    |_ -> let atom1, atom3 = abs ion1, abs ion3 in
-                                            unwatch atom2 clause watching;
-                                            watching.(atom1) <- clause::watching.(atom1);
-                                            watching.(atom3) <- clause::watching.(atom3);
-                                            cnf.(clause) <- ion1::ion3::ion::ion2::unused;
-                                            true, false
+                                begin match ion1 with
+                                    |0 -> graph := (level, -asgn.(atom2), clause)::!graph;
+                                        false, true
+                                    |_ -> let atom1 = abs ion1 in watching.(atom1) <- clause::watching.(atom1);
+                                        cnf.(clause) <- ion1::ion2::ion::unused;
+                                        true, false
                                 end
                         end
                     |ion1::ion::unused when abs ion = atom ->
@@ -279,26 +298,12 @@ let rec propagate level todo watching graph cnf asgn =
                              |_ ->
                                 let atom1 = abs ion1 in
                                 let ion2, unused = search_new_watcher unused in
-                                let ion3, unused = search_new_watcher unused in
-                                begin match ion2, ion3 with
-                                    |0, 0 -> graph := (level, -asgn.(atom1), clause)::!graph;
-                                            false, true
-                                    |_, 0 -> let atom2 = abs ion2 in
-                                           if asgn.(atom2) = 0
-                                               then begin
-                                                   asgn.(atom2) <- ion2;
-                                                   graph := (level, ion2, clause)::!graph;
-                                                   todo := atom2::!todo;
-                                               end;
-                                           watching.(atom2) <- clause::watching.(atom2);
-                                           cnf.(clause) <- ion1::ion2::ion::unused;
-                                           true, false
-                                    |_ -> let atom2, atom3 = abs ion2, abs ion3 in
-                                           unwatch atom1 clause watching;
-                                           watching.(atom2) <- clause::watching.(atom2);
-                                           watching.(atom3) <- clause::watching.(atom3);
-                                           cnf.(clause) <- ion2::ion3::ion1::ion::unused;
-                                           true, false
+                                begin match ion2 with
+                                    |0 -> graph := (level, -asgn.(atom1), clause)::!graph;
+                                        false, true
+                                    |_ -> let atom2 = abs ion2 in watching.(atom2) <- clause::watching.(atom2);
+                                        cnf.(clause) <- ion1::ion2::ion::unused;
+                                        true, false
                                 end
                          end
                     |_ -> failwith "Watcher not found"
@@ -340,11 +345,12 @@ let extend cnf n_laws n =
 ;;
 
 (* TODO: in O(V+E) *)
-let analyze position watching graph cnf =
+let analyze n_clauses watching occ graph cnf =
 (*
     Input:
             [int]                   Free place to remember a new clause
             [int list array]        Clauses watched by atoms
+            [int array]             Occurrences of atoms
             [int * int * int array] Reversed adjacency list of the implication graph
             [int list array]        Logical formula (cnf)
     Output:
@@ -424,16 +430,26 @@ let analyze position watching graph cnf =
             learnt_clause := remove (- !uip) !learnt_clause;
             learnt_clause := remove (- !watcher) !learnt_clause;
 
+            let rec count occ clause =
+                match clause with
+                    |[] -> ()
+                    |ion::clause -> let atom = abs ion in
+                                    occ.(atom) <- occ.(atom)+1;
+                                    count occ clause
+            in
+            count occ !learnt_clause;
+
             let atom1 = abs !uip in
             let atom2 = abs !watcher in
 
             if !watcher = 0
                 then Backjump (!uip, -1, 0)
                 else begin
-                    watching.(atom1) <- position::watching.(atom1);
-                    watching.(atom2) <- position::watching.(atom2);
-                    cnf.(position) <- (- !uip)::(- !watcher)::!learnt_clause;
-                    Backjump (!uip, position, !backjump)
+                    watching.(atom1) <- !n_clauses::watching.(atom1);
+                    watching.(atom2) <- !n_clauses::watching.(atom2);
+                    cnf.(!n_clauses) <- (- !uip)::(- !watcher)::!learnt_clause;
+                    incr n_clauses;
+                    Backjump (!uip, !n_clauses-1, !backjump)
                 end;
         end
 ;;
