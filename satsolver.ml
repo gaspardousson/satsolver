@@ -83,7 +83,7 @@ let dpll_solver problem =
                     	match main (level+1) ion ((level+1,ion,-1)::!graph) asgn with
                     	    |Sat -> Sat
                     	    |Backtrack ->
-                    	match main (level+1) (-ion) ((level+1,ion,-1)::!graph) asgn with
+                    	match main (level+1) (-ion) ((level+1,-ion,-1)::!graph) asgn with
                     	    |Sat -> Sat
                     	    |Backtrack ->
                         Backtrack
@@ -103,15 +103,15 @@ let cdcl_solver problem =
     let watching = init_watching n_atoms n_laws cnf in
     let occ = init_occ n_atoms cnf in
 
-    let cnf = extend cnf n_laws 1000000 in
-    let memory, n_clauses = Array.length cnf, ref n_laws in
+    let cnf = ref (extend cnf n_laws n_laws) in
+    let memory, n_clauses = ref (Array.length !cnf), ref n_laws in
 
     let rec main level ion graph asgn =
         let asgn = Array.copy asgn in
         let graph = ref graph in
         let atom = abs ion in asgn.(atom) <- ion;
 
-        if propagate level [atom] watching graph cnf asgn
+        if propagate level [atom] watching graph !cnf asgn
             then begin
                 let atom = occ_branch n_atoms occ asgn in
                 if atom > n_atoms
@@ -125,9 +125,12 @@ let cdcl_solver problem =
                                 end else Backjump (uip, c, l)
                             |UNSAT -> UNSAT
             end else begin
-            	if !n_clauses >= memory
-                    then failwith "Clause memory overflow";
-                analyze n_clauses watching occ (Array.of_list !graph) cnf
+            	if !n_clauses >= !memory
+                    then begin
+                        cnf := extend !cnf !memory n_laws;
+                        memory := (Array.length !cnf)
+                    end;
+                analyze n_clauses watching occ (Array.of_list !graph) !cnf
             end
     in
 

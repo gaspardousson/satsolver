@@ -53,11 +53,11 @@ def test(f):
         s += file[1]
 
     k = 0
+    print_progress(k, s)
     for file in f:
-        print_progress(k, s)
         os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " >> measures.txt")
         k += file[1]
-    print_progress(k, len(f))
+        print_progress(k, s)
 
     b = []
     file = open("measures.txt", "r")
@@ -115,6 +115,7 @@ def graph(limit, solver, sigma=3):
 
 
 files = [
+    # SAT
     ["test/UF20.91/uf20-0", 1000, True],
     ["test/UF50.218/uf50-0", 1000, True],
     ["test/UF75.325/uf75-0", 100, True],
@@ -126,6 +127,7 @@ files = [
     #["test/UF225.960/uf225-0", 100, True],
     #["test/UF250.1065/uf250-0", 100, True],
 
+    # UNSAT
     ["test/UUF50.218/uuf50-0", 1000, False],
     ["test/UUF75.325/uuf75-0", 100, False],
     ["test/UUF100.430/uuf100-0", 1000, False],
@@ -134,7 +136,7 @@ files = [
     #["test/UUF175.753/uuf175-0", 100, False],
     #["test/UUF200.860/uuf200-0", 100, False],
     #["test/UUF225.960/uuf225-0", 100, False],
-    #["test/UUF250.1065/uuf250-0", 100, False],
+    #["test/UUF250.1065/uuf250-0", 100, False]
 ]
 measures = [
     #"uf/naive_solver",

@@ -170,7 +170,7 @@ let search_two_watchers clause =
 *)
             match clause with
                 |[] -> failwith "Empty clause"
-                |[ion] -> failwith "Unit clause"
+                |[ion] -> abs ion, 0
                 |ion1::ion2::unused when abs ion1 = abs ion2 -> failwith "Repetition"
                 |ion1::ion2::unused -> abs ion1, abs ion2
 ;;
@@ -250,7 +250,16 @@ let rec propagate level todo watching graph cnf asgn =
                 match cnf.(clause) with
                     |[] -> failwith "Empty clause"
 
-                    |[ion] -> failwith "Unit clause"
+                    |[ion] -> if atom = 0
+                                then let atom = abs ion in
+                                     if asgn.(atom) = 0
+                                        then begin
+                                            asgn.(atom) <- ion;
+                                            graph := (level, ion, clause)::!graph;
+                                            todo := atom::!todo;
+                                            true, false
+                                        end else asgn.(atom) = ion, false
+                                else asgn.(atom) = ion, true
 
                     |ion::ion2::unused when abs ion = atom ->
                         let atom2 = abs ion2 in
@@ -328,17 +337,17 @@ let rec propagate level todo watching graph cnf asgn =
 
 (* Conflict driven clause learning *)
 
-let extend cnf n_laws n =
+let extend cnf m n =
     (*
         Input:
             [int list array]        Logical formula (cnf)
-            [int]                   Number of original clauses
-            [int]                   Number of space to add
+            [int]                   Number of current places
+            [int]                   Number of places to add
         Output:
             [int list array]        Extended array
     *)
-    let extended_cnf = Array.make (n_laws + n) [] in
-    for i = 0 to n_laws-1 do
+    let extended_cnf = Array.make (m+n) [] in
+    for i = 0 to m-1 do
         extended_cnf.(i) <- cnf.(i)
     done;
     extended_cnf
@@ -370,9 +379,7 @@ let analyze n_clauses watching occ graph cnf =
             for i = 1 to n-1 do
                 let level, cation, clause2 = graph.(i) in
                 if anion = -cation
-                then if clause2 = -1
-                    then failwith "Decision error"
-                    else learnt_clause := cnf.(clause1)@cnf.(clause2)
+                then learnt_clause := cnf.(clause1)@cnf.(clause2)
             done;
 
             let rec remove anion clause =
@@ -411,20 +418,11 @@ let analyze n_clauses watching occ graph cnf =
                             then (backjump := level; watcher := cation)
             done;
 
-            let rec is_trivial clause =
-                match clause with
-                    |[] -> false
-                    |ion::clause -> List.mem (-ion) clause || is_trivial clause
-            in
-            if is_trivial !learnt_clause then failwith "Trivial";
-
             let rec simplify clause =
                 match clause with
                     |[] -> []
                     |ion::clause -> ion::simplify (remove ion clause)
             in
-
-            if !backjump = c_level then failwith "Back-jumping in a conflict area ";
 
             learnt_clause := simplify !learnt_clause;
             learnt_clause := remove (- !uip) !learnt_clause;
