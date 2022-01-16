@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def print_progress(iteration, total, length=40, print_end="\r"):
@@ -27,7 +28,7 @@ def measure(f):
         print_progress(k, s)
         os.system("./satsolver-opt " + file[0] + " " + str(file[1]) + " time >> measures.txt")
         k += file[1]
-    print_progress(k, len(f))
+    print_progress(k, s)
 
 
 def coord_from_file(path):
@@ -38,8 +39,8 @@ def coord_from_file(path):
             m1, m2, m3, m4 = m.split("-")
             x1.append(int(m1))
             x2.append(int(m2))
-            y.append(float(m3))
-            e.append(float(m4))
+            y.append(float(m3)*10**-3)
+            e.append(float(m4)*10**-3)
     return np.array([np.array(x1), np.array(x2), np.array(y), np.array(e)])
 
 
@@ -89,64 +90,63 @@ def graph(limit, solver, sigma=3):
         y = [1000 * limit] * len(x)
         ax1.plot(x, y, label="limit", linestyle='-')
 
-    for s in solver:
-        c = coord_from_file(s + ".txt")
+    for i in range(len(solver)):
+        c = coord_from_file("measures/" + solver[i] + ".txt")
         x1, x2, y, e = c[0], c[1], c[2], c[3]
 
         fit = np.polyfit(x1, np.log(y), 1)
         f = np.poly1d(fit)
-        x0 = [1]
-        y0 = [np.exp(f(1))]
+        n = 1
+        while np.exp(f(n)) < 10**-5:
+            n += 1
+        x0 = [n]
+        y0 = [np.exp(f(n))]
 
-        while y0[-1] < 1200:
+        while x0[-1] < 260 and y0[-1] < 2*10**2:
             x0.append(x0[-1] + 1)
             y0.append(np.exp(f(x0[-1])))
 
-        ax1.plot(x0, y0, label=s + " (model)", marker='', linestyle='--')
-        ax1.errorbar(x1, y, yerr=sigma*e, label=s + " (data)", marker='x', linestyle='')
+        ax1.plot(x0, y0, marker='', linestyle='dotted', color=colors[i])
+        ax1.errorbar(x1, y, yerr=sigma*e, label= solver[i], marker='x', linestyle='', color=colors[i])
 
     plt.title("Comparaison des solvers")
     ax1.set_xlabel("Nombre de variables")
     ax2.set_xlabel("Nombre de clauses")
-    plt.ylabel("Temps d'exécution moyen (en $ms$)")
+    plt.ylabel("Temps d'exécution moyen (en $s$)")
     plt.yscale("log")
-    plt.legend()
+    plt.legend(loc=2)
     plt.show()
 
-
+colors = sns.color_palette("colorblind")
 files = [
-    # SAT
-    ["test/UF20.91/uf20-0", 1000, True],
-    ["test/UF50.218/uf50-0", 1000, True],
-    ["test/UF75.325/uf75-0", 100, True],
-    ["test/UF100.430/uf100-0", 1000, True],
-    #["test/UF125.538/uf125-0", 100, True],
-    #["test/UF150.645/uf150-0", 100, True],
-    #["test/UF175.753/uf175-0", 100, True],
-    #["test/UF200.860/uf200-0", 100, True],
-    #["test/UF225.960/uf225-0", 100, True],
-    #["test/UF250.1065/uf250-0", 100, True],
-
-    # UNSAT
-    ["test/UUF50.218/uuf50-0", 1000, False],
-    ["test/UUF75.325/uuf75-0", 100, False],
-    ["test/UUF100.430/uuf100-0", 1000, False],
-    #["test/UUF125.538/uuf125-0", 100, False],
-    #["test/UUF150.645/uuf150-0", 100, False],
-    #["test/UUF175.753/uuf175-0", 100, False],
-    #["test/UUF200.860/uuf200-0", 100, False],
-    #["test/UUF225.960/uuf225-0", 100, False],
-    #["test/UUF250.1065/uuf250-0", 100, False]
+    #   Trié des plus petits aux plus gros problèmes (SAT puis UNSAT en cas d'égalité)
+    ["test/UF20.91/uf20-0", 1000, True],        #SAT
+    ["test/UF50.218/uf50-0", 1000, True],       #SAT
+    ["test/UUF50.218/uuf50-0", 1000, False],    #UNSAT
+    ["test/UF75.325/uf75-0", 100, True],        #SAT
+    ["test/UUF75.325/uuf75-0", 100, False],     #UNSAT
+    ["test/UF100.430/uf100-0", 1000, True],     #SAT
+    ["test/UUF100.430/uuf100-0", 1000, False],  #UNSAT
+    ["test/UF125.538/uf125-0", 100, True],      #SAT
+    ["test/UUF125.538/uuf125-0", 100, False],   #UNSAT
+    ["test/UF150.645/uf150-0", 100, True],      #SAT
+    ["test/UUF150.645/uuf150-0", 100, False],   #UNSAT
+    ["test/UF175.753/uf175-0", 100, True],      #SAT
+    ["test/UUF175.753/uuf175-0", 100, False],   #UNSAT
+    ["test/UF200.860/uf200-0", 100, True],      #SAT
+    ["test/UUF200.860/uuf200-0", 100, False],   #UNSAT
+    ["test/UF225.960/uf225-0", 100, True],      #SAT
+    ["test/UUF225.960/uuf225-0", 100, False],   #UNSAT
+    ["test/UF250.1065/uf250-0", 100, True],     #SAT
+    ["test/UUF250.1065/uuf250-0", 100, False]   #UNSAT
 ]
 measures = [
-    #"uf/naive_solver",
-    #"uf/quine_solver",
-    #"uf/dpll_solver",
-    #"uf/cdcl_solver",
-
-    #"uuf/quine_solver",
-    "uuf/dpll_solver",
-    "uuf/cdcl_solver",
+    #"cdcl_naive_sat",
+    #"cdcl_naive_unsat",
+    #"dpll_naive_sat",
+    #"dpll_naive_unsat",
+    #"dpll_occ_sat",
+    #"dpll_occ_unsat",
 ]
 plt.style.use("ggplot")
 

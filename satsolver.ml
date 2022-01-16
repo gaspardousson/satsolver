@@ -34,7 +34,7 @@ let naive_solver problem =
 
 let quine_solver problem =
     let n_atoms, n_laws, cnf = problem in
-    let occ = init_occ n_atoms cnf in
+    let e_th = init_temperature n_atoms cnf in
 
     let rec main level ion asgn =
         let asgn = Array.copy asgn in
@@ -42,7 +42,7 @@ let quine_solver problem =
 
         if check_conflict cnf asgn
             then begin
-                let atom = occ_branch n_atoms occ asgn in
+                let atom = thermal_branch n_atoms e_th asgn in
                 if atom > n_atoms
                     then Sat
                     else let ion = ionize atom in
@@ -67,7 +67,7 @@ let quine_solver problem =
 let dpll_solver problem =
     let n_atoms, n_laws, cnf = problem in
     let watching = init_watching n_atoms n_laws cnf in
-    let occ = init_occ n_atoms cnf in
+    let e_th = init_temperature n_atoms cnf in
 
     let rec main level ion graph asgn =
         let asgn = Array.copy asgn in
@@ -76,7 +76,7 @@ let dpll_solver problem =
 
         if propagate level [atom] watching graph cnf asgn
             then begin
-                let atom = occ_branch n_atoms occ asgn in
+                let atom = thermal_branch n_atoms e_th asgn in
                 if atom > n_atoms
                     then Sat
                     else let ion = ionize atom in
@@ -101,10 +101,10 @@ let dpll_solver problem =
 let cdcl_solver problem =
     let n_atoms, n_laws, cnf = problem in
     let watching = init_watching n_atoms n_laws cnf in
-    let occ = init_occ n_atoms cnf in
+    let e_th = init_temperature n_atoms cnf in
 
-    let cnf = ref (extend cnf n_laws n_laws) in
-    let memory, n_clauses = ref (Array.length !cnf), ref n_laws in
+    let cnf = ref (extend cnf n_laws (n_laws/3)) in
+    let memory, pos = ref (Array.length !cnf), ref n_laws in
 
     let rec main level ion graph asgn =
         let asgn = Array.copy asgn in
@@ -113,7 +113,7 @@ let cdcl_solver problem =
 
         if propagate level [atom] watching graph !cnf asgn
             then begin
-                let atom = occ_branch n_atoms occ asgn in
+                let atom = thermal_branch n_atoms e_th asgn in
                 if atom > n_atoms
                     then SAT
                     else let ion = ionize atom in
@@ -125,12 +125,14 @@ let cdcl_solver problem =
                                 end else Backjump (uip, c, l)
                             |UNSAT -> UNSAT
             end else begin
-            	if !n_clauses >= !memory
+                let backjump = analyze !pos watching e_th (Array.of_list !graph) !cnf in
+                incr pos;
+            	if !pos >= !memory
                     then begin
-                        cnf := extend !cnf !memory n_laws;
+                        cnf := extend !cnf !memory (!memory/10);
                         memory := (Array.length !cnf)
                     end;
-                analyze n_clauses watching occ (Array.of_list !graph) !cnf
+                backjump
             end
     in
 

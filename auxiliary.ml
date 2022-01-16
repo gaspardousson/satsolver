@@ -1,12 +1,12 @@
 (* Debug tools *)
 
 let print_asgn asgn =
-    print_string "[";
+    print_string "[|";
     print_int asgn.(0);
     for i = 1 to Array.length asgn - 1 do
         print_string ";"; print_int asgn.(i);
     done;
-    print_string "]"
+    print_string "|]"
 ;;
 
 let print_clause clause =
@@ -103,18 +103,18 @@ let naive_branch n_atoms asgn =
     !atom
 ;;
 
-let occ_branch n_atoms occ asgn =
+let thermal_branch n_atoms e_th asgn =
 (*
     Input:
         [int]                   Number of atoms
+        [int array]             Thermal energy of atoms
         [int array]             Ionization of atoms
-        [int array]             Occurrences of atoms
     Output:
         [int]                   Atom to ionize
 *)
     let atom = ref 0 in
     for a = 1 to n_atoms do
-        if asgn.(a) = 0 && occ.(a) > occ.(!atom)
+        if asgn.(a) = 0 && e_th.(a) > e_th.(!atom)
             then atom := a
     done;
     if !atom = 0 then atom := n_atoms+1;
@@ -131,7 +131,7 @@ let ionize atom =
     atom
 ;;
 
-let init_occ n_atoms cnf =
+let init_temperature n_atoms cnf =
 (*
     Input:
         [int]                   Number of atoms
@@ -139,22 +139,22 @@ let init_occ n_atoms cnf =
     Output:
         [int * int]             Two watchers
 *)
-    let occ = Array.make (n_atoms+1) 0 in
+    let e_th = Array.make (n_atoms+1) 0 in
     let n_laws = Array.length cnf in
 
-    let rec count occ clause =
+    let rec heat e_th clause =
         match clause with
             |[] -> ()
             |ion::clause -> let atom = abs ion in
-                            occ.(atom) <- occ.(atom)+1;
-                            count occ clause
+                            e_th.(atom) <- e_th.(atom)+1;
+                            heat e_th clause
     in
 
     for clause = 0 to n_laws-1 do
-        count occ cnf.(clause)
+        heat e_th cnf.(clause)
     done;
 
-    occ
+    e_th
 ;;
 
 
@@ -210,9 +210,9 @@ let check_conflict cnf asgn =
                 (asgn.(atom) = ion) || (asgn.(atom) = 0) || (check_clause clause)
     in
 
-    let n_clauses = Array.length cnf in
+    let n = Array.length cnf in
     let no_conflict = ref true in
-    for clause = 0 to n_clauses - 1 do
+    for clause = 0 to n-1 do
         no_conflict := !no_conflict && check_clause cnf.(clause)
     done;
     !no_conflict
@@ -354,12 +354,12 @@ let extend cnf m n =
 ;;
 
 (* TODO: in O(V+E) *)
-let analyze n_clauses watching occ graph cnf =
+let analyze pos watching e_th graph cnf =
 (*
     Input:
-            [int]                   Free place to remember a new clause
+            [int]                   Position to remember a new clause
             [int list array]        Clauses watched by atoms
-            [int array]             Occurrences of atoms
+            [int array]             Thermal energy of atoms
             [int * int * int array] Reversed adjacency list of the implication graph
             [int list array]        Logical formula (cnf)
     Output:
@@ -428,14 +428,14 @@ let analyze n_clauses watching occ graph cnf =
             learnt_clause := remove (- !uip) !learnt_clause;
             learnt_clause := remove (- !watcher) !learnt_clause;
 
-            let rec count occ clause =
+            let rec heat e_th clause =
                 match clause with
                     |[] -> ()
                     |ion::clause -> let atom = abs ion in
-                                    occ.(atom) <- occ.(atom)+1;
-                                    count occ clause
+                                    e_th.(atom) <- e_th.(atom)+1;
+                                    heat e_th clause
             in
-            count occ !learnt_clause;
+            heat e_th !learnt_clause;
 
             let atom1 = abs !uip in
             let atom2 = abs !watcher in
@@ -443,11 +443,10 @@ let analyze n_clauses watching occ graph cnf =
             if !watcher = 0
                 then Backjump (!uip, -1, 0)
                 else begin
-                    watching.(atom1) <- !n_clauses::watching.(atom1);
-                    watching.(atom2) <- !n_clauses::watching.(atom2);
-                    cnf.(!n_clauses) <- (- !uip)::(- !watcher)::!learnt_clause;
-                    incr n_clauses;
-                    Backjump (!uip, !n_clauses-1, !backjump)
+                    watching.(atom1) <- pos::watching.(atom1);
+                    watching.(atom2) <- pos::watching.(atom2);
+                    cnf.(pos) <- (- !uip)::(- !watcher)::!learnt_clause;
+                    Backjump (!uip, pos, !backjump)
                 end;
         end
 ;;
