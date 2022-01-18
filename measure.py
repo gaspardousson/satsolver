@@ -134,22 +134,24 @@ files = [
     ["test/UF175.753/uf175-0", 100, True],      #SAT
     ["test/UUF175.753/uuf175-0", 100, False],   #UNSAT
     ["test/UF200.860/uf200-0", 100, True],      #SAT
-    ["test/UUF200.860/uuf200-0", 100, False],   #UNSAT
+    ["test/UUF200.860/uuf200-0", 99, False],   #UNSAT
     ["test/UF225.960/uf225-0", 100, True],      #SAT
     ["test/UUF225.960/uuf225-0", 100, False],   #UNSAT
     ["test/UF250.1065/uf250-0", 100, True],     #SAT
     ["test/UUF250.1065/uuf250-0", 100, False]   #UNSAT
 ]
 measures = [
-    #"cdcl_naive_sat",
-    #"cdcl_naive_unsat",
     #"dpll_naive_sat",
     #"dpll_naive_unsat",
-    #"dpll_occ_sat",
-    #"dpll_occ_unsat",
+    #"dpll_thermal_sat",
+    #"dpll_thermal_unsat",
+    #"cdcl_naive_sat",
+    #"cdcl_naive_unsat",
+    #"cdcl_thermal_sat",
+    #"cdcl_thermal_unsat"
 ]
 plt.style.use("ggplot")
 
-test(files)
+#test(files)
 #measure(files)
 #graph(0, measures, sigma=2)

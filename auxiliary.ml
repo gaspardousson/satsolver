@@ -103,6 +103,32 @@ let naive_branch n_atoms asgn =
     !atom
 ;;
 
+let init_temperature n_atoms cnf =
+(*
+    Input:
+        [int]                   Number of atoms
+        [int list array]        Logical formula (cnf)
+    Output:
+        [int array]             Thermal energy of atoms
+*)
+    let e_th = Array.make (n_atoms+1) 0 in
+    let n_laws = Array.length cnf in
+
+    let rec heat e_th clause =
+        match clause with
+            |[] -> ()
+            |ion::clause -> let atom = abs ion in
+                            e_th.(atom) <- e_th.(atom)+1;
+                            heat e_th clause
+    in
+
+    for clause = 0 to n_laws-1 do
+        heat e_th cnf.(clause)
+    done;
+
+    e_th
+;;
+
 let thermal_branch n_atoms e_th asgn =
 (*
     Input:
@@ -131,30 +157,15 @@ let ionize atom =
     atom
 ;;
 
-let init_temperature n_atoms cnf =
+let init_potential memory cnf =
 (*
     Input:
-        [int]                   Number of atoms
+        [int]                   Number of places to learn
         [int list array]        Logical formula (cnf)
     Output:
-        [int * int]             Two watchers
+        [float array]           Potential energy of clauses
 *)
-    let e_th = Array.make (n_atoms+1) 0 in
-    let n_laws = Array.length cnf in
-
-    let rec heat e_th clause =
-        match clause with
-            |[] -> ()
-            |ion::clause -> let atom = abs ion in
-                            e_th.(atom) <- e_th.(atom)+1;
-                            heat e_th clause
-    in
-
-    for clause = 0 to n_laws-1 do
-        heat e_th cnf.(clause)
-    done;
-
-    e_th
+    Array.make memory 0.;;
 ;;
 
 
@@ -337,15 +348,15 @@ let rec propagate level todo watching graph cnf asgn =
 
 (* Conflict driven clause learning *)
 
-let extend cnf m n =
-    (*
-        Input:
-            [int list array]        Logical formula (cnf)
-            [int]                   Number of current places
-            [int]                   Number of places to add
-        Output:
-            [int list array]        Extended array
-    *)
+let extend_cnf cnf m n =
+(*
+    Input:
+        [int list array]        Logical formula (cnf)
+        [int]                   Number of current places
+        [int]                   Number of places to add
+    Output:
+        [int list array]        Extended array
+*)
     let extended_cnf = Array.make (m+n) [] in
     for i = 0 to m-1 do
         extended_cnf.(i) <- cnf.(i)
@@ -353,13 +364,53 @@ let extend cnf m n =
     extended_cnf
 ;;
 
+let extend_e_p e_p m n =
+(*
+    Input:
+        [float array]           Potential energy of clauses
+        [int]                   Number of current places
+        [int]                   Number of places to add
+    Output:
+        [int list array]        Extended array
+*)
+    let extended_e_p = Array.make (m+n) 0. in
+    for i = 0 to m-1 do
+        extended_e_p.(i) <- e_p.(i)
+    done;
+    extended_e_p
+;;
+
+let potential_clean e_p ground memory n_laws cnf =
+(*
+    Input:
+        [float array]           Potential energy of clauses
+        [float]                 Minimal potential energy to save
+        [int]                   Number of places to learn
+        [int]                   Number of original clauses
+        [int list array]        Logical formula (cnf)
+    Output:
+        [int]                   Position to remember a new clause
+*)
+    let pos = ref memory in
+    for clause = n_laws to memory - 1 do
+        if e_p.(clause) < ground
+            then begin
+                cnf.(clause) <- [];
+                e_p.(clause) <- 0.;
+                pos := min !pos clause
+            end
+    done;
+    !pos
+;;
+
 (* TODO: in O(V+E) *)
-let analyze pos watching e_th graph cnf =
+let analyze pos watching e_th e_p graph cnf =
 (*
     Input:
             [int]                   Position to remember a new clause
             [int list array]        Clauses watched by atoms
             [int array]             Thermal energy of atoms
+            [float array]           Potential energy of atoms
             [int * int * int array] Reversed adjacency list of the implication graph
             [int list array]        Logical formula (cnf)
     Output:
