@@ -129,16 +129,16 @@ files = [
     ["test/UUF100.430/uuf100-0", 1000, False],  #UNSAT
     ["test/UF125.538/uf125-0", 100, True],      #SAT
     ["test/UUF125.538/uuf125-0", 100, False],   #UNSAT
-    ["test/UF150.645/uf150-0", 100, True],      #SAT
-    ["test/UUF150.645/uuf150-0", 100, False],   #UNSAT
-    ["test/UF175.753/uf175-0", 100, True],      #SAT
-    ["test/UUF175.753/uuf175-0", 100, False],   #UNSAT
-    ["test/UF200.860/uf200-0", 100, True],      #SAT
-    ["test/UUF200.860/uuf200-0", 99, False],   #UNSAT
-    ["test/UF225.960/uf225-0", 100, True],      #SAT
-    ["test/UUF225.960/uuf225-0", 100, False],   #UNSAT
-    ["test/UF250.1065/uf250-0", 100, True],     #SAT
-    ["test/UUF250.1065/uuf250-0", 100, False]   #UNSAT
+    #["test/UF150.645/uf150-0", 100, True],      #SAT
+    #["test/UUF150.645/uuf150-0", 100, False],   #UNSAT
+    #["test/UF175.753/uf175-0", 100, True],      #SAT
+    #["test/UUF175.753/uuf175-0", 100, False],   #UNSAT
+    #["test/UF200.860/uf200-0", 100, True],      #SAT
+    #["test/UUF200.860/uuf200-0", 99, False],   #UNSAT
+    #["test/UF225.960/uf225-0", 100, True],      #SAT
+    #["test/UUF225.960/uuf225-0", 100, False],   #UNSAT
+    #["test/UF250.1065/uf250-0", 100, True],     #SAT
+    #["test/UUF250.1065/uuf250-0", 100, False]   #UNSAT
 ]
 measures = [
     #"dpll_naive_sat",
@@ -148,10 +148,12 @@ measures = [
     #"cdcl_naive_sat",
     #"cdcl_naive_unsat",
     #"cdcl_thermal_sat",
-    #"cdcl_thermal_unsat"
+    #"cdcl_thermal_unsat",
+    #"cdcl_clean_sat",
+    #"cdcl_clean_unsat"
 ]
 plt.style.use("ggplot")
 
 #test(files)
 #measure(files)
-#graph(0, measures, sigma=2)
+graph(0, measures, sigma=2)

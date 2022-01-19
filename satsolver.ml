@@ -126,7 +126,7 @@ let cdcl_solver problem =
                                 end else Backjump (uip, c, l)
                             |UNSAT -> UNSAT
             end else begin
-                let backjump = analyze !pos watching e_th e_p (Array.of_list !graph) !cnf in
+                let backjump = analyze !pos watching e_th !e_p (Array.of_list !graph) !cnf in
 
                 while !pos < !memory && !cnf.(!pos) <> [] do
                     incr pos
@@ -143,7 +143,7 @@ let cdcl_solver problem =
                     then begin
                         cnf := extend_cnf !cnf !memory (!memory/10);
                         e_p := extend_e_p !e_p !memory (!memory/10);
-                        pos := potential_clean !e_p !average !memory n_laws !cnf;
+                        pos := potential_clean !e_p !average !memory n_laws watching !cnf;
                         memory := (Array.length !cnf)
                     end;
 
