@@ -1,4 +1,4 @@
-(* Debug tools *)
+(* Outils pour le debug *)
 
 let print_asgn asgn =
     print_string "[|";
@@ -86,332 +86,339 @@ type backjump = SAT | Backjump of int * int * int | UNSAT;;
 
 
 
-(* Heuristics *)
+(* Heuristiques *)
 
-let naive_branch n_atoms asgn =
+let branchement_naif n_var interpretation =
 (*
-    Input:
-        [int]                   Number of atoms
-        [int array]             Ionization of atoms
-    Output:
-        [int]                   Atom to ionize
+    Entrée :
+        [int]                       Nombre de variables
+        [int array]                 Interprétation actuelle
+    Sortie :
+        [int]                       Variable à fixer
 *)
-    let atom = ref 1 in
-    while !atom <= n_atoms && asgn.(!atom) <> 0 do
-        incr atom
+    let var = ref 1 in
+    while !var <= n_var && interpretation.(!var) <> 0 do
+        incr var
     done;
-    !atom
+    !var
 ;;
 
-let rec heat e_th clause =
+let rec rechauffe clause e_th =
 (*
-    Input:
-        [int array]             Thermal energy of atoms
-        [int list]              Clause
-    Output:
-        [unit]                  ()
+    Entrée :
+        [int list]                  Clause
+        [int array]                 Occurrence par variable
+    Sortie :
+        [unit]                      ()
 *)
     match clause with
         |[] -> ()
-        |ion::clause -> let atom = abs ion in
-                        e_th.(atom) <- e_th.(atom)+1;
-                        heat e_th clause
+        |lit::queue -> let var = abs lit in
+                        e_th.(var) <- e_th.(var)+1;
+                        rechauffe queue e_th
 ;;
 
-let rec cool e_th clause =
+let rec refroidit clause e_th =
 (*
-    Input:
-        [int array]             Thermal energy of atoms
-        [int list]              Clause
-    Output:
-        [unit]                  ()
+    Entrée :
+        [int list]                  Clause
+        [int array]                 Occurrence par variable
+    Sortie :
+        [unit]                      ()
 *)
     match clause with
         |[] -> ()
-        |ion::clause -> let atom = abs ion in
-                        e_th.(atom) <- e_th.(atom)-1;
-                        cool e_th clause
+        |lit::queue -> let var = abs lit in
+                        e_th.(var) <- e_th.(var)-1;
+                        refroidit queue e_th
 ;;
 
-let init_temperature n_atoms cnf =
+let init_temperature n_var n_clauses cnf =
 (*
-    Input:
-        [int]                   Number of atoms
-        [int list array]        Logical formula (cnf)
-    Output:
-        [int array]             Thermal energy of atoms
+    Entrée :
+        [int]                       Nombre de variables
+        [int]                       Nombre de clauses
+        [int list array]            CNF
+    Sortie :
+        [int array]                 Occurrence par variable
 *)
-    let e_th = Array.make (n_atoms+1) 0 in
-    let n_laws = Array.length cnf in
+    let e_th = Array.make (n_var+1) 0 in
 
-    for clause = 0 to n_laws-1 do
-        heat e_th cnf.(clause)
+    for c = 0 to n_clauses-1 do
+        rechauffe cnf.(c) e_th
     done;
 
     e_th
 ;;
 
-let thermal_branch n_atoms e_th asgn =
+let branchement_th e_th n_var interpretation =
 (*
-    Input:
-        [int]                   Number of atoms
-        [int array]             Thermal energy of atoms
-        [int array]             Ionization of atoms
-    Output:
-        [int]                   Atom to ionize
+    Entrée :
+        [int]                       Nombre de variables
+        [int array]                 Occurrence par variable
+        [int array]                 Interprétation
+    Sortie :
+        [int]                       Variable à fixer
 *)
-    let atom = ref 0 in
-    for a = 1 to n_atoms do
-        if asgn.(a) = 0 && e_th.(a) > e_th.(!atom)
-            then atom := a
+    let var = ref 0 in
+    for v = 1 to n_var do
+        if interpretation.(v) = 0 && e_th.(v) > e_th.(!var)
+            then var := v
     done;
-    if !atom = 0 then atom := n_atoms+1;
-    !atom
+    if !var = 0 then var := n_var+1;
+    !var
 ;;
 
-let ionize atom =
+let polarisation_naive var =
 (*
-    Input:
-        [int]                   Atom to ionize
-    Output:
-        [int]                   Natural ion
+    Entrée :
+        [int]                       Variable à fixer
+    Sortie :
+        [int]                       Valeur par laquelle commencer
 *)
-    atom
+    var
 ;;
 
-let init_potential memory cnf =
+let init_potentiel max_clause cnf =
 (*
-    Input:
-        [int]                   Number of places to learn
-        [int list array]        Logical formula (cnf)
-    Output:
-        [float array]           Potential energy of clauses
+    Entrée :
+        [int]                       Nombre maximal de clauses possibles
+        [int list array]            CNF
+    Sortie :
+        [float array]               Potentiel par clause
 *)
-    Array.make memory 0.;;
+    Array.make max_clause 0.;;
 ;;
 
 
 
 (* Two watched literals *)
 
-let search_two_watchers clause =
+let cherche_deux_temoins clause =
 (*
-    Input:
-        [int list]              Clause
-    Output:
-        [int * int]             Two watchers
+    Entrée :
+        [int list]                  Clause
+    Sortie :
+        [int * int]                 Couple de témoins
 *)
             match clause with
-                |[] -> failwith "Empty clause"
-                |[ion] -> abs ion, 0
-                |ion1::ion2::unused when abs ion1 = abs ion2 -> failwith "Repetition"
-                |ion1::ion2::unused -> abs ion1, abs ion2
+                |[] -> failwith "Clause vide"
+                |[lit] -> abs lit, 0
+                |lit1::lit2::queue when abs lit1 = abs lit2 -> failwith "Répétition"
+                |lit1::lit2::queue -> abs lit1, abs lit2
 ;;
 
-let init_watching n_atoms n_laws cnf =
+let init_temoignage n_var n_clauses cnf =
 (*
-    Input:
-        [int]                   Number of atoms
-        [int list array]        Logical formula (cnf)
-    Output:
-        [int list array]        Clauses watched by atoms
+    Entrée :
+        [int]                       Nombre de variables
+        [int]                       Nombre de clauses
+        [int list array]            CNF
+    Sortie :
+        [int list array]            Témoignage (clauses par variable)
 *)
-    let watching = Array.make (n_atoms+1) [] in
+    let temoignage = Array.make (n_var+1) [] in
 
-    for clause = 0 to n_laws-1 do
-        let atom1, atom2 = search_two_watchers cnf.(clause) in
-        watching.(atom1) <- clause::watching.(atom1);
-        watching.(atom2) <- clause::watching.(atom2);
+    for c = 0 to n_clauses-1 do
+        let var1, var2 = cherche_deux_temoins cnf.(c) in
+        temoignage.(var1) <- c::temoignage.(var1);
+        temoignage.(var2) <- c::temoignage.(var2);
     done;
 
-    watching
+    temoignage
 ;;
 
-let rec unwatch clause watched =
+let rec cherche_un_temoin clause interpretation =
 (*
-    Input:
-        [int]                   Clause to unwatch
-        [int list]              List of previously watched clauses
-    Output:
-        [int list]              List of currently watched clauses
+    Entrée :
+        [int list]                  Clause
+        [int list array]            Témoignage (clauses par variable)
+    Sortie :
+        [int]                       Témoin
 *)
-    match watched with
-            |[] -> []
-            |c::watched when clause = c -> unwatch clause watched
-            |c::watched -> c::(unwatch clause watched)
+    match clause with
+        |[] -> 0, []
+        |lit::queue ->
+            let var = abs lit in
+            if interpretation.(var) = -lit
+                then let temoin, queue = cherche_un_temoin queue interpretation in
+                    temoin, lit::queue
+                else lit, queue
 ;;
 
-let forget clause watching =
+let ne_plus_temoigner clause var temoignage =
 (*
-    Input:
-        [int]                   Clause to forget
-        [int list array]        Clauses watched by atoms
+    Entrée :
+        [int]                       Clause à oublier
+        [int]                       Nombre de variables
+        [int list array]            Témoignage  (clauses par variable)
 
-    Output:
-        [unit]                  ()
+    Sortie :
+        [unit]                      ()
 *)
-    for atom = 1 to Array.length watching - 1 do
-        watching.(atom) <- unwatch clause watching.(atom)
+    temoignage.(var) <- List.filter (let f c = (c <> clause) in f) temoignage.(var)
+;;
+
+let oublier clause n_var temoignage =
+(*
+    Entrée :
+        [int]                       Clause à oublier
+        [int]                       Nombre de variables
+        [int list array]            Témoignage  (clauses par variable)
+
+    Sortie :
+        [unit]                      ()
+*)
+    for v = 1 to n_var do
+        ne_plus_temoigner clause v temoignage
     done
 ;;
 
-let check_conflict cnf asgn =
+let est_sans_conflit n_clauses cnf interpretation =
 (*
-    Input:
-        [int list array]        Logical formula (cnf)
-        [int array]             Ionization of atoms
-    Output:
-        [bool]                  No conflict encountered?
+    Entrée :
+        [int]                       Nombre de clauses
+        [int list array]            CNF
+        [int array]                 Interprétation
+    Sortie :
+        [bool]                      Aucun conflit rencontré ?
 *)
-    let rec check_clause clause =
+    let rec peut_etre_satisfaite clause =
         match clause with
             |[] -> false
-            |ion::clause ->
-                let atom = abs ion in
-                (asgn.(atom) = ion) || (asgn.(atom) = 0) || (check_clause clause)
+            |lit::queue ->
+                let var = abs lit in
+                (interpretation.(var) = lit) || (interpretation.(var) = 0) || (peut_etre_satisfaite queue)
     in
 
-    let n = Array.length cnf in
-    let no_conflict = ref true in
-    for clause = 0 to n-1 do
-        no_conflict := !no_conflict && check_clause cnf.(clause)
+    let pas_de_conflict = ref true in
+    for c = 0 to n_clauses-1 do
+        pas_de_conflict := !pas_de_conflict && peut_etre_satisfaite cnf.(c)
     done;
-    !no_conflict
+    !pas_de_conflict
 ;;
 
-let rec propagate level todo watching graph cnf asgn =
+let rec propagation_unitaire todo temoignage niv graphe cnf interpretation =
 (*
-    Input:
-        [int]                   Level of decision
-        [int list]              Atoms to propagate
-        [int list array]        Clauses watched by atoms
-        [int array]             Reversed adjacency list of the implication graph
-        [int list array]        Logical formula (cnf)
-        [int array]             Ionization of atoms
-    Output:
-        [bool]                  No conflict encountered?
+    Entrée :
+        [int list]                  Variables propagées à traiter
+        [int list array]            Témoignage (clauses par variable)
+        [int]                       Niveau de décision
+        [(int * int * int) array]   Graphe d'implication (liste d'adjacence)
+        [int list array]            CNF
+        [int array]                 Interprétation
+    Sortie :
+        [bool]                      Aucun conflit rencontré ?
 *)
     match todo with
         |[] -> true
-        |atom::todo ->
+        |var::todo ->
             let todo = ref todo in
-
-            (* Recherche d'un autre témoin dans le reste de la clause *)
-            let rec search_new_watcher unused =
-                match unused with
-                    |[] -> 0, []
-                    |new_ion::unused ->
-                        let new_atom = abs new_ion in
-                        if asgn.(new_atom) = -new_ion
-                            then let watcher, unused = search_new_watcher unused in
-                                watcher, new_ion::unused
-                            else new_ion, unused
-            in
-
+            
             (* Vérification de la satisfaction, du caractère unitaire ou conflictuel d'une clause *)
-            let prop_clause clause =
+            let propagation_clause clause =
                 match cnf.(clause) with
-                    |[] -> failwith "Empty clause"
+                    |[] -> failwith "Clause vide"
 
-                    |[ion] -> if atom = 0
+                    |[lit] -> if var = 0
                                 then begin
-                                    let atom = abs ion in
-                                    watching.(atom) <- unwatch clause watching.(atom);
-                                    if asgn.(atom) = 0
+                                    let var = abs lit in
+                                    ne_plus_temoigner clause var temoignage;
+                                    if interpretation.(var) = 0
                                         then begin
-                                            asgn.(atom) <- ion;
-                                            graph := (level, ion, clause)::!graph;
-                                            todo := atom::!todo;
+                                            interpretation.(var) <- lit;
+                                            graphe := (niv, lit, clause)::!graphe;
+                                            todo := var::!todo;
                                             true
-                                        end else asgn.(atom) = ion
-                                end else asgn.(atom) = ion
+                                        end else interpretation.(var) = lit
+                                end else interpretation.(var) = lit
 
-                    |ion::ion2::unused when abs ion = atom ->
-                        let atom2 = abs ion2 in
-                        begin match asgn.(atom), asgn.(atom2) with
-                            |asgn1, asgn2 when asgn1 = ion || asgn2 = ion2 ->
+                    |lit::lit2::queue when abs lit = var ->
+                        let var2 = abs lit2 in
+                        begin match interpretation.(var), interpretation.(var2) with
+                            |val1, val2 when val1 = lit || val2 = lit2 ->
                                 true
-                            |asgn1, 0 ->
-                                let ion1, unused = search_new_watcher unused in
-                                begin match ion1 with
-                                    |0 -> asgn.(atom2) <- ion2;
-                                        graph := (level, ion2, clause)::!graph;
-                                        todo := atom2::!todo;
+                            |_, 0 ->
+                                let lit1, queue = cherche_un_temoin queue interpretation in
+                                begin match lit1 with
+                                    |0 -> interpretation.(var2) <- lit2;
+                                        graphe := (niv, lit2, clause)::!graphe;
+                                        todo := var2::!todo;
                                         true
-                                    |_ -> let atom1 = abs ion1 in watching.(atom1) <- clause::watching.(atom1);
-                                        cnf.(clause) <- ion1::ion2::ion::unused;
-                                        watching.(atom) <- unwatch clause watching.(atom);
+                                    |_ -> let var1 = abs lit1 in temoignage.(var1) <- clause::temoignage.(var1);
+                                        cnf.(clause) <- lit1::lit2::lit::queue;
+                                        ne_plus_temoigner clause var temoignage;
                                         true
                                 end
                             |_ ->
-                                let atom2 = abs ion2 in
-                                let ion1, unused = search_new_watcher unused in
-                                begin match ion1 with
-                                    |0 -> graph := (level, -asgn.(atom2), clause)::!graph;
+                                let var2 = abs lit2 in
+                                let lit1, queue = cherche_un_temoin queue interpretation in
+                                begin match lit1 with
+                                    |0 -> graphe := (niv, -interpretation.(var2), clause)::!graphe;
                                         false
-                                    |_ -> let atom1 = abs ion1 in watching.(atom1) <- clause::watching.(atom1);
-                                        cnf.(clause) <- ion1::ion2::ion::unused;
-                                        watching.(atom) <- unwatch clause watching.(atom);
+                                    |_ -> let var1 = abs lit1 in temoignage.(var1) <- clause::temoignage.(var1);
+                                        cnf.(clause) <- lit1::lit2::lit::queue;
+                                        ne_plus_temoigner clause var temoignage;
                                         true
                                 end
                         end
-                    |ion1::ion::unused when abs ion = atom ->
-                         let atom1 = abs ion1 in
-                         begin match asgn.(atom1), asgn.(atom) with
-                             |asgn1, asgn2 when asgn1 = ion1 || asgn2 = ion ->
+                    |lit1::lit::queue when abs lit = var ->
+                         let var1 = abs lit1 in
+                         begin match interpretation.(var1), interpretation.(var) with
+                             |val1, val2 when val1 = lit1 || val2 = lit ->
                                  true
-                             |0, asgn2 ->
-                                 let ion2, unused = search_new_watcher unused in
-                                 begin match ion2 with
-                                    |0 -> asgn.(atom1) <- ion1;
-                                        graph := (level, ion1, clause)::!graph;
-                                        todo := atom1::!todo;
+                             |0, _ ->
+                                 let lit2, queue = cherche_un_temoin queue interpretation in
+                                 begin match lit2 with
+                                    |0 -> interpretation.(var1) <- lit1;
+                                        graphe := (niv, lit1, clause)::!graphe;
+                                        todo := var1::!todo;
                                         true
-                                    |_ -> let atom2 = abs ion2 in watching.(atom2) <- clause::watching.(atom2);
-                                        cnf.(clause) <- ion1::ion2::ion::unused;
-                                        watching.(atom) <- unwatch clause watching.(atom);
+                                    |_ -> let var2 = abs lit2 in temoignage.(var2) <- clause::temoignage.(var2);
+                                        cnf.(clause) <- lit1::lit2::lit::queue;
+                                        ne_plus_temoigner clause var temoignage;
                                         true
                                  end
                              |_ ->
-                                let atom1 = abs ion1 in
-                                let ion2, unused = search_new_watcher unused in
-                                begin match ion2 with
-                                    |0 -> graph := (level, -asgn.(atom1), clause)::!graph;
+                                let var1 = abs lit1 in
+                                let lit2, queue = cherche_un_temoin queue interpretation in
+                                begin match lit2 with
+                                    |0 -> graphe := (niv, -interpretation.(var1), clause)::!graphe;
                                         false
-                                    |_ -> let atom2 = abs ion2 in watching.(atom2) <- clause::watching.(atom2);
-                                        cnf.(clause) <- ion1::ion2::ion::unused;
-                                        watching.(atom) <- unwatch clause watching.(atom);
+                                    |_ -> let var2 = abs lit2 in temoignage.(var2) <- clause::temoignage.(var2);
+                                        cnf.(clause) <- lit1::lit2::lit::queue;
+                                        ne_plus_temoigner clause var temoignage;
                                         true
                                 end
                          end
-                    |_ -> failwith "Watcher not found"
+                    |_ -> failwith "Variable supposée témoin introuvable"
             in
 
             (* Vérification de l'absence de conflit suite à la propagation d'une variable *)
-            let rec prop_atom watched =
-                match watched with
+            let rec propagation_var clauses_associees =
+                match clauses_associees with
                     |[] -> true
-                    |clause::watched -> if prop_clause clause
-                                            then prop_atom watched
+                    |clause::queue -> if propagation_clause clause
+                                            then propagation_var queue
                                             else false
 
 
             in
-            prop_atom watching.(atom) && propagate level !todo watching graph cnf asgn
+            propagation_var temoignage.(var) && propagation_unitaire !todo temoignage niv graphe cnf interpretation
 ;;
 
 
 
-(* Conflict driven clause learning *)
+(* Conflict-driven clause learning *)
 
 let extend_cnf cnf m n =
 (*
-    Input:
-        [int list array]        Logical formula (cnf)
-        [int]                   Number of current places
-        [int]                   Number of places to add
-    Output:
-        [int list array]        Extended array
+    Entrée :
+        [int list array]            Logical formula (cnf)
+        [int]                       Number of current places
+        [int]                       Number of places to add
+    Sortie :
+        [int list array]            Extended array
 *)
     let extended_cnf = Array.make (m+n) [] in
     for i = 0 to m-1 do
@@ -422,12 +429,12 @@ let extend_cnf cnf m n =
 
 let extend_e_p e_p m n =
 (*
-    Input:
-        [float array]           Potential energy of clauses
-        [int]                   Number of current places
-        [int]                   Number of places to add
-    Output:
-        [int list array]        Extended array
+    Entrée :
+        [float array]               Potential energy of clauses
+        [int]                       Number of current places
+        [int]                       Number of places to add
+    Sortie :
+        [int list array]            Extended array
 *)
     let extended_e_p = Array.make (m+n) 0. in
     for i = 0 to m-1 do
@@ -436,143 +443,154 @@ let extend_e_p e_p m n =
     extended_e_p
 ;;
 
-let potential_clean e_th e_p ground memory n_laws watching cnf =
+let nettoyage e_th e_p seuil n_var n_clauses max_clauses cnf temoignage =
 (*
-    Input:
-        [int array]             Thermal energy of atoms
-        [float array]           Potential energy of clauses
-        [float]                 Minimal potential energy to save
-        [int]                   Number of places to learn
-        [int]                   Number of original clauses
-        [int list array]        Clauses watched by atoms
-        [int list array]        Logical formula (cnf)
-    Output:
-        [int]                   Position to remember a new clause
+    Entrée :
+        [int array]                 Occurrence par atome
+        [float array]               Potentiel par clause
+        [float]                     Potentiel minimal à conserver
+        [int]                       Nombre de variables
+        [int]                       Nombre de clauses d'origine
+        [int]                       Nombre maximal de clauses
+        [int list array]            CNF
+        [int list array]            Témoignage (clauses par variable)
+    Sortie :
+        [int]                       Position pour le prochain apprentissage
 *)
-    let pos = ref memory in
-    for clause = n_laws to memory - 1 do
-        if e_p.(clause) < ground
+    let position = ref max_clauses in
+    for c = n_clauses to max_clauses - 1 do
+        if e_p.(c) < seuil
             then begin
-                cool e_th cnf.(clause);
-                cnf.(clause) <- [];
-                e_p.(clause) <- 0.;
-                forget clause watching;
-                pos := min !pos clause
+                refroidit cnf.(c) e_th;
+                cnf.(c) <- [];
+                e_p.(c) <- 0.;
+                oublier c n_var temoignage;
+                position := min !position c
             end
     done;
-    !pos
+    !position
 ;;
 
-let analyze pos watching e_th e_p graph cnf =
+let ne_plus_apprendre litteral clause_apprise =
 (*
-    Input:
-            [int]                   Position to remember a new clause
-            [int list array]        Clauses watched by atoms
-            [int array]             Thermal energy of atoms
-            [float array]           Potential energy of atoms
-            [int * int * int array] Reversed adjacency list of the implication graph
-            [int list array]        Logical formula (cnf)
-    Output:
-            [int]                   Number of decision levels to backjump
+    Entrée :
+        [int]                       Littéral à ne pas retenir
+        [ref (int list)]            Clause apprise
+
+    Sortie :
+        [unit]                      ()
 *)
-    let learnt_clause = ref [] in
+    clause_apprise := List.filter (let f l = (l <> litteral && l <> -litteral) in f) !clause_apprise
+;;
+
+let oublie_les_redondances clause_apprise =
+(*
+    Entrée :
+        [ref (int list)]            Clause apprise
+
+    Sortie :
+        [unit]                      ()
+*)
+    let ajoute_si_inconnu lit clause =
+        if List.mem lit clause then clause else lit::clause
+    in clause_apprise := List.fold_right ajoute_si_inconnu !clause_apprise []
+;;
+
+let analyse position e_th e_p graphe cnf temoignage =
+(*
+    Entrée :
+            [int]                       Position pour l'apprentissage
+            [int array]                 Thermal energy of atoms
+            [float array]               Potential energy of atoms
+            [(int * int * int) array]   Graphe d'implication (liste d'adjacence)
+            [int list array]            CNF
+            [int list array]            Témoignage (clauses par variable)
+    Sortie :
+            [backjump]                  UIP, position de la clause apprise et nombre de niveaux de décision à remonter
+*)
+    let clause_apprise = ref [] in
     let backjump = ref 0 in
-    let used_clauses = ref [] in
+    let clauses_utilisees = ref [] in
 
-    let n = Array.length graph in
-    let conflict_level, anion, clause1 = graph.(0) in
-    used_clauses := clause1::!used_clauses;
+    let graphe = Array.of_list graphe in
+    let n = Array.length graphe in
+    let niv_conflit, lit1, clause1 = graphe.(0) in
+    clauses_utilisees := clause1::!clauses_utilisees;
 
-    if conflict_level = 0
+    if niv_conflit = 0
 
         then UNSAT
 
         else begin
             (* Recherche de l'autre littéral du conflit *)
             for i = 1 to n-1 do
-                let level, cation, clause2 = graph.(i) in
-                if anion = -cation
+                let niv, lit2, clause2 = graphe.(i) in
+                if lit2 = -lit1
                 then begin
-                    used_clauses := clause2::!used_clauses;
-                    learnt_clause := cnf.(clause1)@cnf.(clause2)
+                    clauses_utilisees := clause2::!clauses_utilisees;
+                    clause_apprise := cnf.(clause1) @ cnf.(clause2)
                 end
             done;
 
             (* Suppression du conflit de la clause apprise *)
-            let rec remove ion1 clause =
-                match clause with
-                    |[] -> []
-                    |ion2::clause when ion1 = ion2 -> remove ion1 clause
-                    |ion2::clause -> ion2::remove ion1 clause
-            in
-            learnt_clause := remove anion !learnt_clause;
-            learnt_clause := remove (-anion) !learnt_clause;
+            ne_plus_apprendre lit1 clause_apprise;
 
             (* Recherche de l'UIP *)
             let uip = ref 0 in
-            let watcher = ref 0 in
+            let temoin = ref 0 in
             for i = 1 to n-1 do
-                let level, cation, clause = graph.(i) in
-                if List.mem (-cation) !learnt_clause
-                    then if level = conflict_level
+                let niv1, lit1, clause1 = graphe.(i) in
+                if List.mem (-lit1) !clause_apprise
+                    then if niv1 = niv_conflit
                         then begin
                             let j = ref (i+1) in
                             let is_uip = ref true in
                             while !j < n && !is_uip do
-                                let l, anion, c = graph.(!j) in
-                                is_uip := !is_uip && not (l = level && List.mem (-anion) !learnt_clause);
+                                let niv2, lit2, clause2 = graphe.(!j) in
+                                is_uip := !is_uip && not (niv2 = niv1 && List.mem (-lit2) !clause_apprise);
                                 incr j
                             done;
 
                             if !is_uip
                                 then begin
-                                    used_clauses := clause::!used_clauses;
-                                    uip := cation
+                                    clauses_utilisees := clause1::!clauses_utilisees;
+                                    uip := lit1
                                 end else begin
-                                    learnt_clause := !learnt_clause@cnf.(clause);
-                                    learnt_clause := remove (-cation) !learnt_clause;
-                                    learnt_clause := remove (cation) !learnt_clause
+                                    clause_apprise := !clause_apprise @ cnf.(clause1);
+                                    ne_plus_apprendre lit1 clause_apprise;
                                 end
                     end else
-                        if level >= !backjump
-                            then (backjump := level; watcher := cation)
+                        if niv1 >= !backjump
+                            then (backjump := niv1; temoin := lit1)
             done;
 
             (* Suppression des répétitions de la clause *)
-            let rec simplify clause =
-                match clause with
-                    |[] -> []
-                    |ion::clause -> ion::simplify (remove ion clause)
-            in
-
-            learnt_clause := simplify !learnt_clause;
-            learnt_clause := remove (- !uip) !learnt_clause;
-            learnt_clause := remove (- !watcher) !learnt_clause;
-
-            (* Mise à jour des occurences des variables *)
-            heat e_th !learnt_clause;
+            oublie_les_redondances clause_apprise;
+            ne_plus_apprendre !uip clause_apprise;
+            ne_plus_apprendre !temoin clause_apprise;
 
             (* Incrémentation du potentiel des clauses impliquées dans l'analyse *)
-            let rec rise e_p used =
-                match used with
+            let rec eleve e_p clauses_utilisees =
+                match clauses_utilisees with
                     |[] -> ()
-                    |clause::used when clause = -1 -> rise e_p used
-                    |clause::used -> e_p.(clause) <- e_p.(clause) +. 1.;
-                                    rise e_p used
+                    |clause::queue when clause = -1 -> eleve e_p queue
+                    |clause::queue -> e_p.(clause) <- e_p.(clause) +. 1.;
+                                    eleve e_p queue
             in
-            rise e_p !used_clauses;
+            eleve e_p !clauses_utilisees;
 
             (* Choix des témoins et ajout de la clause apprise *)
-            let atom1 = abs !uip in
-            let atom2 = abs !watcher in
-            if !watcher = 0
+            let var1 = abs !uip in
+            let var2 = abs !temoin in
+            if var2 = 0
                 then Backjump (!uip, -1, 0)
                 else begin
-                    watching.(atom1) <- pos::watching.(atom1);
-                    watching.(atom2) <- pos::watching.(atom2);
-                    cnf.(pos) <- (- !uip)::(- !watcher)::!learnt_clause;
-                    e_p.(pos) <- 1.;
-                    Backjump (!uip, pos, !backjump)
+                    temoignage.(var1) <- position::temoignage.(var1);
+                    temoignage.(var2) <- position::temoignage.(var2);
+                    cnf.(position) <- (- !uip)::(- !temoin)::!clause_apprise;
+                    rechauffe cnf.(position) e_th;
+                    e_p.(position) <- 1.;
+                    Backjump (!uip, position, !backjump)
                 end;
         end
 ;;
