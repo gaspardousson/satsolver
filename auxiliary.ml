@@ -103,6 +103,36 @@ let naive_branch n_atoms asgn =
     !atom
 ;;
 
+let rec heat e_th clause =
+(*
+    Input:
+        [int array]             Thermal energy of atoms
+        [int list]              Clause
+    Output:
+        [unit]                  ()
+*)
+    match clause with
+        |[] -> ()
+        |ion::clause -> let atom = abs ion in
+                        e_th.(atom) <- e_th.(atom)+1;
+                        heat e_th clause
+;;
+
+let rec cool e_th clause =
+(*
+    Input:
+        [int array]             Thermal energy of atoms
+        [int list]              Clause
+    Output:
+        [unit]                  ()
+*)
+    match clause with
+        |[] -> ()
+        |ion::clause -> let atom = abs ion in
+                        e_th.(atom) <- e_th.(atom)-1;
+                        cool e_th clause
+;;
+
 let init_temperature n_atoms cnf =
 (*
     Input:
@@ -113,14 +143,6 @@ let init_temperature n_atoms cnf =
 *)
     let e_th = Array.make (n_atoms+1) 0 in
     let n_laws = Array.length cnf in
-
-    let rec heat e_th clause =
-        match clause with
-            |[] -> ()
-            |ion::clause -> let atom = abs ion in
-                            e_th.(atom) <- e_th.(atom)+1;
-                            heat e_th clause
-    in
 
     for clause = 0 to n_laws-1 do
         heat e_th cnf.(clause)
@@ -274,6 +296,7 @@ let rec propagate level todo watching graph cnf asgn =
         |atom::todo ->
             let todo = ref todo in
 
+            (* Recherche d'un autre témoin dans le reste de la clause *)
             let rec search_new_watcher unused =
                 match unused with
                     |[] -> 0, []
@@ -285,6 +308,7 @@ let rec propagate level todo watching graph cnf asgn =
                             else new_ion, unused
             in
 
+            (* Vérification de la satisfaction, du caractère unitaire ou conflictuel d'une clause *)
             let prop_clause clause =
                 match cnf.(clause) with
                     |[] -> failwith "Empty clause"
@@ -363,6 +387,7 @@ let rec propagate level todo watching graph cnf asgn =
                     |_ -> failwith "Watcher not found"
             in
 
+            (* Vérification de l'absence de conflit suite à la propagation d'une variable *)
             let rec prop_atom watched =
                 match watched with
                     |[] -> true
@@ -411,9 +436,10 @@ let extend_e_p e_p m n =
     extended_e_p
 ;;
 
-let potential_clean e_p ground memory n_laws watching cnf =
+let potential_clean e_th e_p ground memory n_laws watching cnf =
 (*
     Input:
+        [int array]             Thermal energy of atoms
         [float array]           Potential energy of clauses
         [float]                 Minimal potential energy to save
         [int]                   Number of places to learn
@@ -427,6 +453,7 @@ let potential_clean e_p ground memory n_laws watching cnf =
     for clause = n_laws to memory - 1 do
         if e_p.(clause) < ground
             then begin
+                cool e_th cnf.(clause);
                 cnf.(clause) <- [];
                 e_p.(clause) <- 0.;
                 forget clause watching;
@@ -436,7 +463,6 @@ let potential_clean e_p ground memory n_laws watching cnf =
     !pos
 ;;
 
-(* TODO: in O(V+E) *)
 let analyze pos watching e_th e_p graph cnf =
 (*
     Input:
@@ -454,14 +480,15 @@ let analyze pos watching e_th e_p graph cnf =
     let used_clauses = ref [] in
 
     let n = Array.length graph in
-    let c_level, anion, clause1 = graph.(0) in
+    let conflict_level, anion, clause1 = graph.(0) in
     used_clauses := clause1::!used_clauses;
 
-    if c_level = 0
+    if conflict_level = 0
 
         then UNSAT
 
         else begin
+            (* Recherche de l'autre littéral du conflit *)
             for i = 1 to n-1 do
                 let level, cation, clause2 = graph.(i) in
                 if anion = -cation
@@ -471,21 +498,23 @@ let analyze pos watching e_th e_p graph cnf =
                 end
             done;
 
-            let rec remove anion clause =
+            (* Suppression du conflit de la clause apprise *)
+            let rec remove ion1 clause =
                 match clause with
                     |[] -> []
-                    |cation::clause when cation = anion -> remove cation clause
-                    |cation::clause -> cation::remove anion clause
+                    |ion2::clause when ion1 = ion2 -> remove ion1 clause
+                    |ion2::clause -> ion2::remove ion1 clause
             in
             learnt_clause := remove anion !learnt_clause;
             learnt_clause := remove (-anion) !learnt_clause;
 
+            (* Recherche de l'UIP *)
             let uip = ref 0 in
             let watcher = ref 0 in
             for i = 1 to n-1 do
                 let level, cation, clause = graph.(i) in
                 if List.mem (-cation) !learnt_clause
-                    then if level = c_level
+                    then if level = conflict_level
                         then begin
                             let j = ref (i+1) in
                             let is_uip = ref true in
@@ -509,6 +538,7 @@ let analyze pos watching e_th e_p graph cnf =
                             then (backjump := level; watcher := cation)
             done;
 
+            (* Suppression des répétitions de la clause *)
             let rec simplify clause =
                 match clause with
                     |[] -> []
@@ -519,15 +549,10 @@ let analyze pos watching e_th e_p graph cnf =
             learnt_clause := remove (- !uip) !learnt_clause;
             learnt_clause := remove (- !watcher) !learnt_clause;
 
-            let rec heat e_th clause =
-                match clause with
-                    |[] -> ()
-                    |ion::clause -> let atom = abs ion in
-                                    e_th.(atom) <- e_th.(atom)+1;
-                                    heat e_th clause
-            in
+            (* Mise à jour des occurences des variables *)
             heat e_th !learnt_clause;
 
+            (* Incrémentation du potentiel des clauses impliquées dans l'analyse *)
             let rec rise e_p used =
                 match used with
                     |[] -> ()
@@ -537,9 +562,9 @@ let analyze pos watching e_th e_p graph cnf =
             in
             rise e_p !used_clauses;
 
+            (* Choix des témoins et ajout de la clause apprise *)
             let atom1 = abs !uip in
             let atom2 = abs !watcher in
-
             if !watcher = 0
                 then Backjump (!uip, -1, 0)
                 else begin

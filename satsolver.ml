@@ -4,6 +4,7 @@ open Auxiliary
 
 let naive_solver problem =
     let n_atoms, n_laws, cnf = problem in
+    let asgn = Array.make (n_atoms+1) 0 in
 
     let rec main level ion asgn =
         let asgn = Array.copy asgn in
@@ -24,7 +25,6 @@ let naive_solver problem =
                 Backtrack
     in
 
-    let asgn = Array.make (n_atoms+1) 0 in
     Sat = main 0 0 asgn
 ;;
 
@@ -34,6 +34,7 @@ let naive_solver problem =
 
 let quine_solver problem =
     let n_atoms, n_laws, cnf = problem in
+    let asgn = Array.make (n_atoms+1) 0 in
     let e_th = init_temperature n_atoms cnf in
 
     let rec main level ion asgn =
@@ -56,7 +57,6 @@ let quine_solver problem =
             end else Backtrack
     in
 
-    let asgn = Array.make (n_atoms+1) 0 in
     Sat = main 0 0 asgn
 ;;
 
@@ -66,6 +66,7 @@ let quine_solver problem =
 
 let dpll_solver problem =
     let n_atoms, n_laws, cnf = problem in
+    let asgn = Array.make (n_atoms+1) 0 in
     let watching = init_watching n_atoms n_laws cnf in
     let e_th = init_temperature n_atoms cnf in
 
@@ -90,7 +91,6 @@ let dpll_solver problem =
             end else Backtrack
     in
 
-    let asgn = Array.make (n_atoms+1) 0 in
     Sat = main 0 0 [] asgn
 ;;
 
@@ -100,6 +100,7 @@ let dpll_solver problem =
 
 let cdcl_solver problem =
     let n_atoms, n_laws, cnf = problem in
+    let asgn = Array.make (n_atoms+1) 0 in
     let watching = init_watching n_atoms n_laws cnf in
     let e_th = init_temperature n_atoms cnf in
 
@@ -121,9 +122,9 @@ let cdcl_solver problem =
                     	match main (level+1) ion ((level+1,ion,-1)::!graph) asgn with
                     	    |SAT -> SAT
                     	    |Backjump (uip, c, l) ->
-                    	        if l = level then begin
-                                    main level (-uip) ((level,-uip,c)::!graph) asgn
-                                end else Backjump (uip, c, l)
+                    	        if l = level
+                    	            then main level (-uip) ((level,-uip,c)::!graph) asgn
+                                    else Backjump (uip, c, l)
                             |UNSAT -> UNSAT
             end else begin
                 let backjump = analyze !pos watching e_th !e_p (Array.of_list !graph) !cnf in
@@ -143,7 +144,7 @@ let cdcl_solver problem =
                     then begin
                         cnf := extend_cnf !cnf !memory (!memory/10);
                         e_p := extend_e_p !e_p !memory (!memory/10);
-                        pos := potential_clean !e_p !average !memory n_laws watching !cnf;
+                        pos := potential_clean e_th !e_p !average !memory n_laws watching !cnf;
                         memory := (Array.length !cnf)
                     end;
 
@@ -151,6 +152,5 @@ let cdcl_solver problem =
             end
     in
 
-    let asgn = Array.make (n_atoms+1) 0 in
     SAT = (main 0 0 [] asgn)
 ;;

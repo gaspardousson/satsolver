@@ -120,21 +120,21 @@ def graph(limit, solver, sigma=3):
 colors = sns.color_palette("colorblind")
 files = [
     #   Trié des plus petits aux plus gros problèmes (SAT puis UNSAT en cas d'égalité)
-    ["test/UF20.91/uf20-0", 1000, True],        #SAT
-    ["test/UF50.218/uf50-0", 1000, True],       #SAT
-    ["test/UUF50.218/uuf50-0", 1000, False],    #UNSAT
-    ["test/UF75.325/uf75-0", 100, True],        #SAT
-    ["test/UUF75.325/uuf75-0", 100, False],     #UNSAT
-    ["test/UF100.430/uf100-0", 1000, True],     #SAT
-    ["test/UUF100.430/uuf100-0", 1000, False],  #UNSAT
-    ["test/UF125.538/uf125-0", 100, True],      #SAT
-    ["test/UUF125.538/uuf125-0", 100, False],   #UNSAT
+    ["test/UF20.91/uf20-0", 1000, True],          #SAT
+    ["test/UF50.218/uf50-0", 1000, True],         #SAT
+    ["test/UUF50.218/uuf50-0", 1000, False],      #UNSAT
+    ["test/UF75.325/uf75-0", 100, True],          #SAT
+    ["test/UUF75.325/uuf75-0", 100, False],       #UNSAT
+    #["test/UF100.430/uf100-0", 1000, True],     #SAT
+    #["test/UUF100.430/uuf100-0", 1000, False],  #UNSAT
+    #["test/UF125.538/uf125-0", 100, True],      #SAT
+    #["test/UUF125.538/uuf125-0", 100, False],   #UNSAT
     #["test/UF150.645/uf150-0", 100, True],      #SAT
     #["test/UUF150.645/uuf150-0", 100, False],   #UNSAT
     #["test/UF175.753/uf175-0", 100, True],      #SAT
     #["test/UUF175.753/uuf175-0", 100, False],   #UNSAT
     #["test/UF200.860/uf200-0", 100, True],      #SAT
-    #["test/UUF200.860/uuf200-0", 99, False],   #UNSAT
+    #["test/UUF200.860/uuf200-0", 99, False],    #UNSAT
     #["test/UF225.960/uf225-0", 100, True],      #SAT
     #["test/UUF225.960/uuf225-0", 100, False],   #UNSAT
     #["test/UF250.1065/uf250-0", 100, True],     #SAT
@@ -154,6 +154,6 @@ measures = [
 ]
 plt.style.use("ggplot")
 
-#test(files)
+test(files)
 #measure(files)
-graph(0, measures, sigma=2)
+#graph(0, measures, sigma=2)
