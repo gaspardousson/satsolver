@@ -104,9 +104,10 @@ let solveur_cdcl probleme =
     let temoignage = init_temoignage n_var n_clauses cnf in
     let e_th = init_temperature n_var n_clauses cnf in
 
-    let cnf = ref (extend_cnf cnf n_clauses (n_clauses/3)) in
-    let max_clauses, position = ref (Array.length !cnf), ref n_clauses in
+    let cnf = ref cnf in
+    let max_clauses, position = ref n_clauses, ref n_clauses in
     let e_p = ref (init_potentiel !max_clauses cnf) in
+    prolonger n_clauses (n_clauses/3) max_clauses e_p cnf;
 
     let rec main niv lit graphe interpretation =
         let interpretation = Array.copy interpretation in
@@ -142,8 +143,7 @@ let solveur_cdcl probleme =
 
             	if !position >= !max_clauses
                     then begin
-                        cnf := extend_cnf !cnf !max_clauses (!max_clauses/10);
-                        e_p := extend_e_p !e_p !max_clauses (!max_clauses/10);
+                        prolonger !max_clauses (!max_clauses/10) max_clauses e_p cnf;
                         position := nettoyage e_th !e_p !moyenne n_var n_clauses !max_clauses !cnf temoignage;
                         max_clauses := (Array.length !cnf)
                     end;

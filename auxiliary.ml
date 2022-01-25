@@ -411,36 +411,30 @@ let rec propagation_unitaire todo temoignage niv graphe cnf interpretation =
 
 (* Conflict-driven clause learning *)
 
-let extend_cnf cnf m n =
+let prolonger m n max_clauses e_p cnf =
 (*
     Entrée :
-        [int list array]            Logical formula (cnf)
-        [int]                       Number of current places
-        [int]                       Number of places to add
+        [int]                       Nombre de clauses prévues
+        [int]                       Nombre de clauses à ajouter
+        [ref int]                   Nombre maximal de clauses
+        [ref (float array)]         Potentiel par clause
+        [ref ((int list) array)]    CNF
     Sortie :
-        [int list array]            Extended array
+        [unit]                      ()
 *)
-    let extended_cnf = Array.make (m+n) [] in
+    let prolongement = Array.make (m+n) [] in
     for i = 0 to m-1 do
-        extended_cnf.(i) <- cnf.(i)
+        prolongement.(i) <- !cnf.(i)
     done;
-    extended_cnf
-;;
+    cnf := prolongement;
 
-let extend_e_p e_p m n =
-(*
-    Entrée :
-        [float array]               Potential energy of clauses
-        [int]                       Number of current places
-        [int]                       Number of places to add
-    Sortie :
-        [int list array]            Extended array
-*)
-    let extended_e_p = Array.make (m+n) 0. in
+    let prolongement = Array.make (m+n) 0. in
     for i = 0 to m-1 do
-        extended_e_p.(i) <- e_p.(i)
+        prolongement.(i) <- !e_p.(i)
     done;
-    extended_e_p
+    e_p := prolongement;
+
+    max_clauses := n+m
 ;;
 
 let nettoyage e_th e_p seuil n_var n_clauses max_clauses cnf temoignage =
@@ -483,7 +477,7 @@ let ne_plus_apprendre litteral clause_apprise =
     clause_apprise := List.filter (let f l = (l <> litteral && l <> -litteral) in f) !clause_apprise
 ;;
 
-let oublie_les_redondances clause_apprise =
+let oublier_les_redondances clause_apprise =
 (*
     Entrée :
         [ref (int list)]            Clause apprise
@@ -491,17 +485,17 @@ let oublie_les_redondances clause_apprise =
     Sortie :
         [unit]                      ()
 *)
-    let ajoute_si_inconnu lit clause =
+    let ajouter_si_inconnu lit clause =
         if List.mem lit clause then clause else lit::clause
-    in clause_apprise := List.fold_right ajoute_si_inconnu !clause_apprise []
+    in clause_apprise := List.fold_right ajouter_si_inconnu !clause_apprise []
 ;;
 
 let analyse position e_th e_p graphe cnf temoignage =
 (*
     Entrée :
             [int]                       Position pour l'apprentissage
-            [int array]                 Thermal energy of atoms
-            [float array]               Potential energy of atoms
+            [int array]                 Occurrence par atome
+            [float array]               Potentiel par clause
             [(int * int * int) array]   Graphe d'implication (liste d'adjacence)
             [int list array]            CNF
             [int list array]            Témoignage (clauses par variable)
@@ -565,7 +559,7 @@ let analyse position e_th e_p graphe cnf temoignage =
             done;
 
             (* Suppression des répétitions de la clause *)
-            oublie_les_redondances clause_apprise;
+            oublier_les_redondances clause_apprise;
             ne_plus_apprendre !uip clause_apprise;
             ne_plus_apprendre !temoin clause_apprise;
 
