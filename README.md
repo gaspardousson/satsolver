@@ -1,5 +1,7 @@
-# Sat Solver
+# Solveur SAT
 
-Work in progress...
+`make opt` pour compiler
 
-Can be build using `make opt`
+`make clean` pour nettoyer
+
+Appel avec un chemin vers `file.cnf` pour résoudre (renvoie `sat`ou `unsat`, sans certificat)
