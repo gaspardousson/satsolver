@@ -10,12 +10,12 @@
 
 main :
     PB INT INT
-    cnf EOC EOF { $2, $3, $4 }
+    cnf { $2, $3, $4 }
 ;
 
 cnf :
     |clause cnf { $1::$2 }
-    |EOCNF { [] }
+    |EOF { [] }
 
 clause :
     |INT clause { $1::$2 }
