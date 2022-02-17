@@ -1,32 +1,14 @@
 open Reader;;
+open Auxiliary;;
 open Satsolver;;
 
 
-
+(* Choix du solveur utilisé par la suite *)
 let solveur = solveur_cdcl;;
 
 
-let mu a =
-    let n = Array.length a in
-    let m = ref 0. in
-    for i = 0 to n - 1 do
-        m := !m +. a.(i)
-    done;
-    !m /. float_of_int n
-;;
-
-let sigma a =
-    let n = Array.length a in
-    let s = ref 0. in
-    let m = mu a in
-    for i = 0 to n - 1 do
-        s := !s +. (m -. a.(i)) ** 2.
-    done;
-    sqrt (!s /. float_of_int (n-1))
-;;
-
-
 let mesurer_sat chemin n_pb =
+(* Résout les problèmes SAT fournis en entrée. *)
     let prob = Array.make n_pb (0, 0, [||]) in
     for i = 1 to n_pb do
         prob.(i-1) <- lire_cnf (chemin ^ (string_of_int i) ^ ".cnf")
@@ -40,6 +22,7 @@ let mesurer_sat chemin n_pb =
 
 
 let mesurer_temps chemin n_pb =
+(* Mesure le temps de résolution des problèmes SAT fournis en entrée. *)
     let prob = Array.make n_pb (0, 0, [||]) in
     for i = 1 to n_pb do
         prob.(i-1) <- lire_cnf (chemin ^ (string_of_int i) ^ ".cnf")
@@ -54,12 +37,18 @@ let mesurer_temps chemin n_pb =
     let n_var, n_clauses, cnf = prob.(0) in
     print_endline (string_of_int n_var ^ "-" ^
                    string_of_int n_clauses ^ "-" ^
-                   string_of_float (1000. *. mu t_pb) ^ "-" ^
-                   string_of_float (1000. *. sigma t_pb /. sqrt(float_of_int n_pb)))
+                   string_of_float (1000. *. moyenne t_pb) ^ "-" ^
+                   string_of_float (1000. *. ecart_type t_pb /. sqrt(float_of_int n_pb)))
 ;;
 
 
 let () =
+(*
+    Format d'argument(s) possible(s) :
+        chemin -> Résout le problème indiqué par le chemin
+        chemin, n_pb -> Résout les n_pb problèmes indiqués par le chemin
+        chemin, n_pb, grandeur -> Résout les n_pb problèmes indiqués par le chemin et renvoie le résultat (si bool) ou  le temps de résolution (si time)
+*)
     match Array.length Sys.argv with
     |1 -> failwith "Aucun travail donné"
     |2 -> if solveur (lire_cnf Sys.argv.(1))
