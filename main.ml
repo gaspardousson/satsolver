@@ -3,12 +3,12 @@ open Auxiliary;;
 open Satsolver;;
 
 
-(* Choix du solveur utilisé par la suite *)
+(*  Choix du solveur utilisé par la suite.  *)
 let solveur = solveur_cdcl;;
 
 
 let mesurer_sat chemin n_pb =
-(* Résout les problèmes SAT fournis en entrée. *)
+(*  Résout les problèmes SAT fournis en entrée.  *)
     let prob = Array.make n_pb (0, 0, [||]) in
     for i = 1 to n_pb do
         prob.(i-1) <- lire_cnf (chemin ^ (string_of_int i) ^ ".cnf")
@@ -22,7 +22,7 @@ let mesurer_sat chemin n_pb =
 
 
 let mesurer_temps chemin n_pb =
-(* Mesure le temps de résolution des problèmes SAT fournis en entrée. *)
+(*  Mesure les temps de résolution des problèmes SAT fournis en entrée et imprime la moyenne et l'écart-type.  *)
     let prob = Array.make n_pb (0, 0, [||]) in
     for i = 1 to n_pb do
         prob.(i-1) <- lire_cnf (chemin ^ (string_of_int i) ^ ".cnf")
@@ -47,7 +47,7 @@ let () =
     Format d'argument(s) possible(s) :
         chemin -> Résout le problème indiqué par le chemin
         chemin, n_pb -> Résout les n_pb problèmes indiqués par le chemin
-        chemin, n_pb, grandeur -> Résout les n_pb problèmes indiqués par le chemin et renvoie le résultat (si bool) ou  le temps de résolution (si time)
+        chemin, n_pb, grandeur -> Résout les n_pb problèmes indiqués par le chemin et renvoie le résultat (si bool) ou le temps de résolution (si time)
 *)
     match Array.length Sys.argv with
     |1 -> failwith "Aucun travail donné"
